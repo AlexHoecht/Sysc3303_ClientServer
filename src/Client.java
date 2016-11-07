@@ -755,7 +755,7 @@ public class Client
 	{
 		int n = 0;
 		while (n<5){
-			if(quiet == false)
+			if(quiet == false)                          
 			{
 			// Where we are receiving the packet
 				System.out.println("Client is receiving at " + sendReceiveSocket.getLocalPort());
@@ -763,7 +763,17 @@ public class Client
 			try
 			{
 				sendReceiveSocket.receive(receivePacket);
-				return;
+				// when the client is sending ACKS
+				if ((sendPacket.getData()[3] < receivePacket.getData()[3]|| sendPacket.getData()[2] < receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4) return;
+				
+				// When the client is sending DataPackets
+				else if ((sendPacket.getData()[3] == receivePacket.getData()[3] && sendPacket.getData()[2] == receivePacket.getData()[2] )&& sendPacket.getData()[1] == 3) return;
+				
+				// when the client is sending ERRORS
+				if (sendPacket.getData()[1] == 5 ) return;
+				
+				System.out.println("Last Packet received was a duplicate");
+				send(sendPacket);
 			}
 			catch(IOException e)
 			{
