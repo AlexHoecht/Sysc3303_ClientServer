@@ -57,6 +57,7 @@ public class Client
 		try
 		{
 			sendReceiveSocket = new DatagramSocket();
+			sendReceiveSocket.setSendBufferSize(1000);
 		}
 		catch(SocketException se)
 		{
@@ -347,15 +348,10 @@ public class Client
 				// RECEIVING PACKETS!
 				// We initialize the DatagramPacket that we receive into
 				receivePacket = new DatagramPacket(receivePacketSize, receivePacketSize.length);
-				try
-				{
-					sendReceiveSocket.receive(receivePacket);
-				}
-				catch(IOException e)
-				{
-					e.printStackTrace();
-					System.exit(1);
-				}
+					
+				receive();
+				
+
 		
 				// If we are operating in verbose mode, Print what we receive
 				if(quiet == false)
@@ -727,15 +723,8 @@ public class Client
 			System.out.println();
 		}
 		
-		try 
-		{
-			sendReceiveSocket.send(sendPacket);
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-			System.exit(0);
-		}
+			send(sendPacket);
+
 	}
 
 
@@ -764,21 +753,25 @@ public class Client
 	 */
 	public void receive ()
 	{
-		if(quiet == false)
-		{
+		int n = 0;
+		while (n<5){
+			if(quiet == false)
+			{
 			// Where we are receiving the packet
-			System.out.println("Client is receiving at " + sendReceiveSocket.getLocalPort());
+				System.out.println("Client is receiving at " + sendReceiveSocket.getLocalPort());
+			}
+			try
+			{
+				sendReceiveSocket.receive(receivePacket);
+				return;
+			}
+			catch(IOException e)
+			{
+				System.out.println("Client didn't get a response");
+			}
+			System.out.println("We have received");
 		}
-		try
-		{
-			sendReceiveSocket.receive(receivePacket);
-		}
-		catch(IOException e)
-		{
-			e.printStackTrace();
-			System.exit(1);
-		}
-		System.out.println("We have received");
+		System.out.println("Client didn't get a response and has now made 5 attempts. Client is ending transfer.");
 	}
 	
 	
