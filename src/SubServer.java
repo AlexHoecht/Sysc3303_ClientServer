@@ -6,6 +6,8 @@ public class SubServer implements Runnable {
 	
 //////////////////////////////////////////////////
 	private static String filePath;
+	// Datagram socket timeout in milliseconds
+	private static int TIMEOUT = 1000;
 //////////////////////////////////////////////////
 	
 	// Datagrams to be used in the SubServer
@@ -57,7 +59,8 @@ public class SubServer implements Runnable {
 		// Create Socket
 		try
 		{
-			subServerSocket = new DatagramSocket();	
+			subServerSocket = new DatagramSocket();
+			subServerSocket.setSoTimeout(TIMEOUT);
 		}
 		catch(SocketException se)
 		{
@@ -331,23 +334,37 @@ public class SubServer implements Runnable {
 		    		System.out.print(" " + sendPacket.getData()[i]);
 		    	}
 		    	System.out.println( "\n \n" + sendPacket.getData()[1] + " 2nd byte of data being sent");
-		    	try
-				{
-					subServerSocket.send(sendPacket);
-				} 
-				
-				catch (IOException e)
-				{
-					e.printStackTrace();
-					System.exit(0);
-				}
-		    	re(fdata);
-		    	sendPacket.setData(re(sendPacket.getData()));
 		    	
-		    	System.out.println("Reaching receive");
-		    	receive();
-		    	System.out.println( "\n \n" + receivePacket.getData()[1] + " 2nd byte of data being sent");
-		    	
+		    	// Loop until an acknowledge with the proper block number is received
+		    	// If not received within the timeout length, retransmit the last packet
+		    	Boolean socketTimedOut = true;
+		    	while(socketTimedOut)
+		    	{
+		    		socketTimedOut = false;
+			    	try
+					{
+						subServerSocket.send(sendPacket);
+					} 
+					
+					catch (IOException e)
+					{
+						e.printStackTrace();
+						System.exit(0);
+					}
+			    	re(fdata);
+			    	sendPacket.setData(re(sendPacket.getData()));
+			    	
+			    	System.out.println("Reaching receive");
+			    	try
+			    	{
+			    		receive();
+			    	}
+			    	catch(SocketTimeoutException e)
+			    	{
+			    		socketTimedOut = true;
+			    	}
+			    	System.out.println( "\n \n" + receivePacket.getData()[1] + " 2nd byte of data being sent");
+		    	}
 		    }
 		    System.out.println("Leaving Send Data");
 			in.close();
@@ -401,10 +418,25 @@ public class SubServer implements Runnable {
 		System.out.println("Server is waiting to receive a data packet");
 		
 		// Wait to receive the packet
-		receive();
+		Boolean socketTimedOut = true;
+		while(socketTimedOut)
+		{
+			socketTimedOut = false;
+			try
+			{
+				receive();
+			}
+			catch(SocketTimeoutException e)
+			{
+				socketTimedOut = true;
+			}
+		}
 		
+		socketTimedOut = true;
 		// While the data is 512 bytes
-		while(receivePacket.getData()[515] != (byte) 0)
+		// Loop until data with the proper block number is received
+    	// If not received within the timeout length, retransmit the last packet
+		while(receivePacket.getData()[515] != (byte) 0 && socketTimedOut)
 		{
 			// If there is not enough usable space in directory
 			if(serverDir.getUsableSpace() < 512)
@@ -419,7 +451,15 @@ public class SubServer implements Runnable {
 			System.out.println("data packet has been writen to file");
 			
 			// Wait to receive another packet
-			receive();
+			socketTimedOut = false;
+			try
+			{
+				receive();
+			}
+			catch(SocketTimeoutException e)
+			{
+				socketTimedOut = true;
+			}
 		}
 		
 		// When the data is less then 512 bytes
@@ -501,10 +541,14 @@ public class SubServer implements Runnable {
 	/*
 	 * A method that sends the Datagram packets
 	 */
-	public void sendPacket(){
-		try {
+	public void sendPacket()
+	{
+		try
+		{
 			subServerSocket.send(receivePacket);
-		} catch (IOException e) {
+		}
+		catch (IOException e)
+		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -514,16 +558,27 @@ public class SubServer implements Runnable {
 	/*
 	 * A method that waits until a Datagram packet is received
 	 */
-	public void receive(){
-		try 
+	public void receive() throws SocketTimeoutException
+	{
+		do
 		{
-			subServerSocket.receive(receivePacket);
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-			System.exit(0);
+			try 
+			{
+				subServerSocket.receive(receivePacket);
+			}
+			catch(SocketTimeoutException e)
+			{
+				throw e;
+			}
+			catch (IOException e) 
+			{
+				e.printStackTrace();
+				System.exit(0);
+			}
 		}
+		// Ignore acknowledges that have a block number less than what was expected
+		// i.e. delayed ack packets
+		while(sendPacket.getData()[1] == 4 && (sendPacket.getData()[3] < receivePacket.getData()[3] || sendPacket.getData()[2] < receivePacket.getData()[2]));
 	}
 	
 	// wipes array replacing all elements with null
