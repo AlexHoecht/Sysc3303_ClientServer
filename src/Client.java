@@ -58,7 +58,7 @@ public class Client
 		{
 			sendReceiveSocket = new DatagramSocket();
 			//sendReceiveSocket.setSendBufferSize(1000);
-			sendReceiveSocket.setSoTimeout(1000);
+			sendReceiveSocket.setSoTimeout(10000);
 		}
 		catch(SocketException se)
 		{
@@ -513,7 +513,7 @@ public class Client
 	    System.out.println("Sending data to: " + sendPacket.getPort());
 	    
 	    // The first packet number
-	    int packNum = 0;
+	    int packNum = 1;
 	    // used for cycling through file
 	    int n;
 	    // a and b used for printing packet number without negatives
@@ -600,6 +600,8 @@ public class Client
 	    	}
 	
 	    	// Send the current sendPacket
+	    	System.out.println("\nAbout to send");
+	    	System.out.println("About to send");
 	    	send(sendPacket);
 	    	
 	    	// Clear all bytes in fdata
@@ -735,18 +737,21 @@ public class Client
 	 */
 	public void send(DatagramPacket sP)
 	{		
+		System.out.println("Sending!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		try
 		{
 			// Send
 			sendReceiveSocket.send(sP);
 		}
+		
+		
 		catch(IOException e)
 		{
 			e.printStackTrace();
 			System.exit(1);
 		}
 		
-		System.out.println("Client has sent packet!");
+		System.out.println("Client has sent packet!!");
 	}
 	
 	/*
@@ -766,13 +771,17 @@ public class Client
 				sendReceiveSocket.receive(receivePacket);
 				// when the client is sending ACKS
 				if ((sendPacket.getData()[3] < receivePacket.getData()[3]|| sendPacket.getData()[2] < receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4){
-					System.out.println("We have received");
+					System.out.println("We have received an Data Packet");
 					return;
 				} 
 				
 				// When the client is sending DataPackets
-				else if ((sendPacket.getData()[3] == receivePacket.getData()[3] && sendPacket.getData()[2] == receivePacket.getData()[2] )&& sendPacket.getData()[1] == 3){
-					System.out.println("We have received");
+				else if ((sendPacket.getData()[3] == receivePacket.getData()[3] && sendPacket.getData()[2] == receivePacket.getData()[2] && sendPacket.getData()[1] == 3)){
+					System.out.println("We have received a ACK packet");
+					return;
+				}
+				else if ((sendPacket.getData()[1] == 1 || sendPacket.getData()[1] == 2) && receivePacket.getData()[3] == 0){
+					System.out.println("We have received the first response");
 					return;
 				}
 				
@@ -782,7 +791,7 @@ public class Client
 					System.out.println("We have received");
 					return;
 				}
-				
+				System.out.println(receivePacket.getData()[2] + " " + receivePacket.getData()[3] + " sent " + sendPacket.getData()[2] + " " + sendPacket.getData()[3]);
 				System.out.println("Last Packet received was not what was exected");
 				
 			}
