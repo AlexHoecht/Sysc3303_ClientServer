@@ -57,7 +57,8 @@ public class Client
 		try
 		{
 			sendReceiveSocket = new DatagramSocket();
-			sendReceiveSocket.setSendBufferSize(1000);
+			//sendReceiveSocket.setSendBufferSize(1000);
+			sendReceiveSocket.setSoTimeout(1000);
 		}
 		catch(SocketException se)
 		{
@@ -764,22 +765,34 @@ public class Client
 			{
 				sendReceiveSocket.receive(receivePacket);
 				// when the client is sending ACKS
-				if ((sendPacket.getData()[3] < receivePacket.getData()[3]|| sendPacket.getData()[2] < receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4) return;
+				if ((sendPacket.getData()[3] < receivePacket.getData()[3]|| sendPacket.getData()[2] < receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4){
+					System.out.println("We have received");
+					return;
+				} 
 				
 				// When the client is sending DataPackets
-				else if ((sendPacket.getData()[3] == receivePacket.getData()[3] && sendPacket.getData()[2] == receivePacket.getData()[2] )&& sendPacket.getData()[1] == 3) return;
+				else if ((sendPacket.getData()[3] == receivePacket.getData()[3] && sendPacket.getData()[2] == receivePacket.getData()[2] )&& sendPacket.getData()[1] == 3){
+					System.out.println("We have received");
+					return;
+				}
+				
 				
 				// when the client is sending ERRORS
-				if (sendPacket.getData()[1] == 5 ) return;
+				if (sendPacket.getData()[1] == 5 ) {
+					System.out.println("We have received");
+					return;
+				}
 				
-				System.out.println("Last Packet received was a duplicate");
-				send(sendPacket);
+				System.out.println("Last Packet received was not what was exected");
+				
 			}
 			catch(IOException e)
 			{
-				System.out.println("Client didn't get a response");
+				System.out.println("Client didn't get a response \n resending packet");
+				send(sendPacket);
 			}
-			System.out.println("We have received");
+			
+			n++;
 		}
 		System.out.println("Client didn't get a response and has now made 5 attempts. Client is ending transfer.");
 	}
