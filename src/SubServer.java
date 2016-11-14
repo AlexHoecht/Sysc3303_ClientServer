@@ -2,10 +2,15 @@ import java.io.*;
 import java.net.*;
 import java.util.Arrays;
 
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+
 public class SubServer implements Runnable {
 	
 //////////////////////////////////////////////////
 	private static String filePath;
+	private static final int SOCKET_TIMEOUT = 1000;
+	private static final int TIMEOUT_ATTEMPTS = 5;
 //////////////////////////////////////////////////
 	
 	// Datagrams to be used in the SubServer
@@ -23,7 +28,7 @@ public class SubServer implements Runnable {
 	
 	// Integer representation of the packet number
 	private int packetCounter = 0;
-	
+	private int errorPort;
 	// The file being accessed by the client request
 	private File receivedFile;
 	private File serverDir;
@@ -34,6 +39,9 @@ public class SubServer implements Runnable {
 	// Boolean statements that help with file transfer
 	private boolean errorOut = false;
 	private boolean firstBlock = true;
+	
+	// Frame for the pop up windows to use
+	private JFrame popupWindow = new JFrame();
 	
 	/*
 	 * The main constructor for the Server class.
@@ -53,11 +61,15 @@ public class SubServer implements Runnable {
 		serverDir = s;
 		// Save the filepath
 		filePath = fP;
+		//Save the port number
+		errorPort = target;
+		
 
 		// Create Socket
 		try
 		{
 			subServerSocket = new DatagramSocket();	
+			subServerSocket.setSoTimeout(SOCKET_TIMEOUT);
 		}
 		catch(SocketException se)
 		{
@@ -104,7 +116,7 @@ public class SubServer implements Runnable {
 	
 	@Override
 	public void run() 
-	{		
+	{	
 		// If write request
 		if (data[1] == 2)
 		{
@@ -116,6 +128,7 @@ public class SubServer implements Runnable {
 			if(serverDir.getUsableSpace() < 512)
 	        {
 				// Send error
+				JOptionPane.showMessageDialog(popupWindow, "Directory does not have enough free space...!");
 	            sendPacket.setData(createErrorPacket(new byte[] {0, 3}));
 	            errorOut = true;
 	        }
@@ -133,7 +146,7 @@ public class SubServer implements Runnable {
 		{
 			try 
 			{
-				handleRead(filePath+ "\\"+fileName);
+				handleRead(filePath + "\\" + fileName);
 			}
 			catch (IOException e) 
 			{
@@ -163,6 +176,7 @@ public class SubServer implements Runnable {
     	if(!receivedFile.exists())
     	{
     		boolean fileAdded = false;
+    		
     		try
     		{
     			// Create if the file doesn't already exist
@@ -185,16 +199,12 @@ public class SubServer implements Runnable {
     	// File already exists ERROR
     	else
     	{
-    		sendPacket.setData(createErrorPacket(new byte[] {0, 6}));
+    		JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
+    		sendPacket.setData(createErrorPacket(new byte[] {0, 5, 0, 6}));
     		errorOut = true;
     		try 
     		{
     			subServerSocket.send(sendPacket);
-    			System.out.println("File which was requested to write already exist\n" );
-    			for (int i = 0; i < sendPacket.getData().length; i++)
-    			{
-    				System.out.print(sendPacket.getData()[i] + ", ");
- 				}
  			} 
     		catch (IOException e) 
     		{
@@ -243,22 +253,48 @@ public class SubServer implements Runnable {
 	 */
 	public void handleRead(String readFile) throws IOException
 	{
+		sendPacket.setPort(errorPort);
+		//stem.out.println("HERE " + receivePacket.getPort());
 		// First check to see if the requested file exists
 		// Create the file to be added to the directory
 		File tempFile = new File(readFile);
+		/*
+		for(String f : serverDir.list())
+		{
+			System.out.print(f);
+		}*/
 		
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// ERROR CHECKING
+		// File does not exist ERROR
 		if(!tempFile.isFile())
 	    {
-	        sendPacket.setData(createErrorPacket(new byte[] {0, 1}));
-	        subServerSocket.send(sendPacket);
+	        sendPacket.setData(createErrorPacket(new byte[] {0, 5, 0, 1}));
+
+	        JOptionPane.showMessageDialog(popupWindow, "ERROR: \n" + "File does not exist!");
+	        
+        	subServerSocket.send(sendPacket);
+	        
 	        return;
 	    }
+		
+		// File cannot be read ERROR
+		else if(writeOnly(tempFile))
+	    {
+			JOptionPane.showMessageDialog(popupWindow, "ERROR: \n" + "File cannot be read.");
+			
+	        sendPacket.setData(createErrorPacket(new byte[] {0, 5, 0, 2}));
+	        subServerSocket.send(sendPacket);
+	        
+	        return;
+	    }
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
 		else
 		{
 			// Sending read data from file to client
 			System.out.println("Sending data to: " + sendPacket.getPort());
-			int packNum = 0;
+			int packNum = 1;
 			BufferedInputStream in = new BufferedInputStream(new FileInputStream(readFile));
 			
 			//bytes from file
@@ -279,8 +315,9 @@ public class SubServer implements Runnable {
 		    pack[1] = 3; 
 		
 		    // while loop cycles through data in file 512 bytes at a time
-		    while ((n = in.read(fdata)) != -1)
+		    while ((n = in.read(fdata)) != -1 && !Thread.interrupted())
 		    {
+		    	pack[1] = 3; 
 		    	//setting bytes for packet number converting from int to 2 bytes
 		    	pack[3] = (byte) (packNum & 0xFF);
 		    	pack[2] = (byte) ((packNum >> 8) & 0xFF); 
@@ -320,17 +357,19 @@ public class SubServer implements Runnable {
 		    		b = pack[3];
 		    		a &= 0xFF;
 		    		b &= 0xFF;
-		    	
-		    	//System.out.println(a + ", " + b);
 		
-		    	for (int i = 0; i < pack.length; i++){
+		    	for (int i = 0; i < pack.length; i++)
+		    	{
 		    		System.out.print(" " + pack[i]);
 		    	}
 		    	}
-		    	for (int i = 0; i < sendPacket.getData().length; i++){
+		    	for (int i = 0; i < sendPacket.getData().length; i++)
+		    	{
 		    		System.out.print(" " + sendPacket.getData()[i]);
 		    	}
-		    	System.out.println( "\n \n" + sendPacket.getData()[1] + " 2nd byte of data being sent");
+		    	
+		    	//System.out.println( "\n \n" + sendPacket.getData()[1] + " 2nd byte of data being sent");
+		    	
 		    	try
 				{
 					subServerSocket.send(sendPacket);
@@ -342,12 +381,12 @@ public class SubServer implements Runnable {
 					System.exit(0);
 				}
 		    	re(fdata);
-		    	sendPacket.setData(re(sendPacket.getData()));
 		    	
-		    	System.out.println("Reaching receive");
+		    	
+		    	//System.out.println("Reaching receive");
 		    	receive();
-		    	System.out.println( "\n \n" + receivePacket.getData()[1] + " 2nd byte of data being sent");
-		    	
+		    	//System.out.println( "\n \n" + receivePacket.getData()[1] + " 2nd byte of data being sent");
+		    	sendPacket.setData(re(sendPacket.getData()));
 		    }
 		    System.out.println("Leaving Send Data");
 			in.close();
@@ -373,6 +412,8 @@ public class SubServer implements Runnable {
 		
 		if(!receivedFile.canWrite())
 	    { 
+			JOptionPane.showMessageDialog(popupWindow, "ERROR: \n" + "This file is Read-Only");
+			
 			sendPacket.setData(createErrorPacket(new byte[] {0, 2}));
 	        try
 	        {
@@ -404,11 +445,13 @@ public class SubServer implements Runnable {
 		receive();
 		
 		// While the data is 512 bytes
-		while(receivePacket.getData()[515] != (byte) 0)
+		while(receivePacket.getData()[515] != (byte) 0 && !Thread.interrupted())
 		{
 			// If there is not enough usable space in directory
 			if(serverDir.getUsableSpace() < 512)
 	        {
+				JOptionPane.showMessageDialog(popupWindow, "ERROR: \n" + "Directory does not have enough free space.");
+				
 	            sendPacket.setData(createErrorPacket(new byte[] {0, 3}));
 	            errorOut = true;
 	            System.out.println("Out of file space error has been sent to client");
@@ -474,6 +517,7 @@ public class SubServer implements Runnable {
 	 */
 	public void sendAck (byte[] code)
 	{
+		code[1] = 4;
 		sendPacket.setData(code);
 		System.out.println("Server sent ACK packet");
 		System.out.println("To Host: " + sendPacket.getAddress());
@@ -503,7 +547,8 @@ public class SubServer implements Runnable {
 	 */
 	public void sendPacket(){
 		try {
-			subServerSocket.send(receivePacket);
+			System.out.println(receivePacket.getPort());
+			subServerSocket.send(sendPacket);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -514,16 +559,59 @@ public class SubServer implements Runnable {
 	/*
 	 * A method that waits until a Datagram packet is received
 	 */
-	public void receive(){
-		try 
+	public void receive()
+	{
+		for(int attempt = 0; attempt < TIMEOUT_ATTEMPTS; attempt++)
 		{
-			subServerSocket.receive(receivePacket);
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-			System.exit(0);
+			receivePacket.setData(re(receivePacket.getData()));
+			try 
+			{
+				subServerSocket.receive(receivePacket);
+				byte[] spd = sendPacket.getData();
+				byte[] rpd = receivePacket.getData();
+				System.out.println("Sent packet " + Arrays.toString(spd));
+				System.out.println("Receive packet " + Arrays.toString(rpd));
+				// Receive data (Write to server)
+				if(receivePacket.getData()[1] == 3 && ((rpd[3] == 0 && rpd[2] == 0) ||( spd[3] < rpd[3] || spd[2] < rpd[2])))
+				{
+					System.out.println("We have received an Data Packet");
+					System.out.println("pack num of recieved " + rpd [2] + " " + rpd[3]);
+					System.out.println("pack num of sent before " + spd [2] + " " + spd[3]);
+					return;
+				}
+				// Receive acknowledge or haven't sent anything yet (Read from server)
+				else if((rpd[1] == 4 && spd[3] == rpd[3] && spd[2] == rpd[2])
+					|| (spd[1] == 0))
+				{
+					System.out.println("We have received a ACK packet");
+				 	return;
+				}
+				// Error
+				else if (spd[1] == 5)
+				{
+					System.out.println("We have received an error");
+					return;
+				}
+				else
+				{
+					System.out.println("Invalid packet received resending data, attempt number " + attempt);
+					sendPacket();
+				}
+			}
+			catch(SocketTimeoutException e)
+			{
+				System.out.println("Sub server socket timed out while waiting for packet. Resend previous packet attempt number " + attempt);
+				sendPacket();
+			}
+			catch (IOException e) 
+			{
+				e.printStackTrace();
+				System.exit(0);
+			}
+			
 		}
+		System.out.println("Maximum timeouts reached. Shutting down.");
+		Thread.currentThread().interrupt();
 	}
 	
 	// wipes array replacing all elements with null
@@ -581,7 +669,7 @@ public class SubServer implements Runnable {
 	    // Error message
 	    String errMsgStr;
 	    if(errorCode[0] != 0) throw new IllegalArgumentException("First byte in errorCode must be 0");
-	    switch(errorCode[1])
+	    switch(errorCode[3])
 	    {
 	        case 1 : errMsgStr = "File not found";
 	                 break;
@@ -612,5 +700,12 @@ public class SubServer implements Runnable {
 	    return data;
 	}
     
-
+    private boolean writeOnly(File file)
+	{
+		if(file.canRead())
+		{
+			return false;
+		}
+		return true;
+	}
 }
