@@ -12,6 +12,9 @@ import java.io.*;
 import java.net.*;
 import java.util.Arrays;
 
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+
 
 public class Server 
 {
@@ -24,11 +27,14 @@ public class Server
 	// Path of the current directory used to transfer files to and from
 	private String directoryPath;
 	
+	// The Client Connection Thread
+	private Thread t;
 	// The path for the file being transferred
-	private String filePath;
-	private String inputString;
+	private boolean hasThreadStarted = false;
 	
-
+	// Frame for the pop up windows to use
+	private JFrame popupWindow = new JFrame();
+	
 	/*
 	 * The main constructor for the Server class.
 	 * When the Server is initialized, it receives at port 69 and creates the Directory
@@ -76,6 +82,9 @@ public class Server
 		// Sets the default file path for the Server Directory 
 		directoryPath = serverDir.getAbsolutePath().replace('\\',  '/');
 		System.out.println("Directory " + directoryPath + "\n");
+		
+		Thread k = new Thread(new KillerThread(this));
+		k.start();
 		
 		// Loop Here!!
 		while(true)
@@ -139,6 +148,7 @@ public class Server
 			
 			catch(NoSuchFieldException e)
 			{
+				JOptionPane.showMessageDialog(popupWindow, "Invalid Request received...! \n" + "Quitting");
 				System.out.println("Invalid Request..... Quitting");
 				System.exit(1);
 			}
@@ -187,10 +197,21 @@ public class Server
 			System.out.println();
 			
 			// CREATE THE CLIENT CONNECTION THREAD
-		    Thread t = new Thread (new SubServer(receivePacket.getPort(), receivePacket.getData(),fileName,data, serverDir, directoryPath));
-		    t.start();
+			t = new Thread (new SubServer(receivePacket.getPort(), receivePacket.getData(),fileName,data, serverDir, directoryPath));
+		    hasThreadStarted = true;
+			t.start();
 		}
 
+	}
+	
+	public void kill() throws InterruptedException
+	{
+		System.out.println("Server has terminated");
+		if(hasThreadStarted)
+		{
+			t.join();
+		}
+		System.exit(0);
 	}
 	
 	/*
