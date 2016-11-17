@@ -9,6 +9,11 @@
  */
 import java.net.*;
 import java.util.Arrays;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+
+import java.awt.Component;
 import java.io.*;
 
 public class Client 
@@ -28,15 +33,15 @@ public class Client
 	private byte[] receivePacketSize;
 	// The data of the request packet
 	private byte[] message;
+	// The opcode and block number of the packet being transferred
 	private byte[] opNum = new byte[4];
 	
-	// User input mode of the TFTP
-	private boolean quiet;
-	private boolean normal;
 	// if true stop the current data transfer
-    	private boolean haltCurrentTransfer;
+    private boolean haltCurrentTransfer;
 	// False overwrites the current file, true appends additional data
 	private boolean fileWriterAppend;
+	// If the Client has timed out
+	private boolean timeout = false;
 	
 	// The client directory
 	private File clientDir;
@@ -45,6 +50,21 @@ public class Client
 	
 	// The port that the Datagram Packet will be sent to
 	private int portNum;
+	
+	// Frame used to facilitate UI
+	private JFrame popupWindow;
+	
+	// User input mode of the TFTP
+	// TEST or NORMAL mode
+	private int tORn = 0;
+	// QUIET or VERBOSE outputs
+	private int qORv = 0;
+	// Type of request for the file transfer
+	private String request;
+	// Has the user set all nessessary inputs
+	private boolean allValidInputs;
+	
+	
 
 	/*
 	 * The main constructor for class Client
@@ -58,7 +78,7 @@ public class Client
 		{
 			sendReceiveSocket = new DatagramSocket();
 			//sendReceiveSocket.setSendBufferSize(1000);
-			sendReceiveSocket.setSoTimeout(10000);
+			sendReceiveSocket.setSoTimeout(1500);
 		}
 		catch(SocketException se)
 		{
@@ -85,34 +105,22 @@ public class Client
 	 */
 	public void ClientAlgorithm()
 	{
-		// We want our Client to run until we say so
-		boolean running = true;		
-		while (running)
+		// Reset for next data transfer
+		haltCurrentTransfer = false;
+		
+		// Overwrite at the beginning of each transfer
+		fileWriterAppend = false;
+		
+		// Prompt the user to set the Directory
+		int directory = JOptionPane.showConfirmDialog(popupWindow,"Do you want to use the default directory for the client and server?", "Directory", JOptionPane.YES_NO_OPTION);
+		
+		// CREATING THE CLIENT DIRECTORY
+		clientDir = new File("Client Directory");
+		// If default is selected
+		if(directory == 0)
 		{
-			// Reset for next data transfer
-			haltCurrentTransfer = false;
-			
-			// Overwrite at the beginning of each transfer
-			fileWriterAppend = false;
-			
-			// The user input request
-			String request = null;
-	
-			//keeps track between test or normal mode
-			int tOrN = 0;		
-			//keeps track between quiet and verbose 
-			int qOrV = 0;
-			
-			//User input stream
-			BufferedReader bufferRead = new BufferedReader(new InputStreamReader(System.in));
-			
-			// CREATING THE CLIENT DIRECTORY
-			clientDir = new File("Client Directory");
 			// Set the file path to where Client Directory is created
-			directoryPath = clientDir.getAbsolutePath().replace('\\',  '/');
-			// Print file path for the user to see
-			System.out.println("Directory " + directoryPath + "\n");
-			
+			directoryPath = clientDir.getAbsolutePath().replace('\\',  '/');		
 			// If the directory doesn't already exist, create it
 			if(!clientDir.exists())
 			{
@@ -126,171 +134,85 @@ public class Client
 					System.exit(1);
 				}
 			}
-			
-			// USER INPUT 1: Test mode (Uses ErrorSimulator) or Normal mode (Doesn't uses the ErrorSimulator)
-			while(tOrN == 0)
-			{
-				System.out.print("Would you like to enter test mode, or normal mode? (1 for test 2 for normal): ");
-				try
-				{
-					// Input
-					inputString = bufferRead.readLine();
-				}
-				catch(IOException ex)
-				{
-					ex.printStackTrace();
-					System.exit(0);
-				}
-				
-				// If the user inputs 1
-				if(inputString.equals("1"))
-				{
-					System.out.println("We are now in test mode!\n");
-					tOrN = 1;
-					normal = false;
-					portNum = 23;		// The request packets will be sent to the Error Simulator
-				}
-				
-				// If the user inputs 2
-				else if(inputString.equals("2"))
-				{
-					System.out.println("We are now in normal mode!\n");
-					tOrN = 2;
-					normal = true;
-					portNum = 69;		// The request packets will be sent to the Server
-				}
-				
-				// If the user input was invalid
-				else
-				{
-					System.out.println
-					("Invalid option");
-				}
-			}
-        
-			// USER INPUT 2: Quiet mode (Minimal information displayed) or Verbose mode (Displays detailed information)
-			while(qOrV == 0)
-			{
-				System.out.print("Would you like to enter quiet mode, or verbose mode? (1 for quiet 2 for verbose): ");
-				try
-				{
-					// Input
-					inputString = bufferRead.readLine();
-				}
-				catch(IOException ex)
-				{
-					ex.printStackTrace();
-					System.exit(0);
-				}
-				
-				// If the user inputs 1
-				if(inputString.equals("1"))
-				{
-					System.out.println("We are now in quiet mode\n");
-					qOrV = 1;
-					quiet = true;
-				}
-				
-				// If the user inputs 2
-				else if(inputString.equals("2"))
-				{
-					System.out.println("We are now in verbose mode\n");
-					qOrV = 2;
-					quiet = false;
-				}
-				
-				// If the user input is invalid
-				else
-				{
-					System.out.println("Invalid option");
-				}
-			}
-	
-			// HERE!!!!!! The Client will stay in this loop until killed
+		}
+		else
+		{
+			// Prompt user to set directory path
+			directoryPath = JOptionPane.showInputDialog(null,"Specify file path:", "Directory", JOptionPane.QUESTION_MESSAGE);
+		}
+		
+		// Print the chosen file path for the user to see
+		System.out.println("Directory " + directoryPath + "\n");
+		
+		// HERE!!!!!! The Client will stay in this loop until killed
+		while(true)
+		{
 			while(true)
 			{
-				// This loop handles an invalid input, file not found, and other errors that may occur during input
-				while(true)
+				while(!allValidInputs)
 				{
-					// USER INPUT 3: What file will we be transferring?
-					System.out.print("What file are we going to be transferring? ");
-					try
-					{
-						// input
-						inputString = bufferRead.readLine();
-					}
-					catch(IOException ex)
-					{
-						ex.printStackTrace();
-			       	}
-					
-					// The user input file name
-					fileName = inputString;
-					// Print the file path for the user
-					System.out.println("Transferring file " + directoryPath + "/" + fileName + "\n");
-					
-					// Create an empty byte array for the request packet
-					message = new byte[4 + fileName.length() + mode.length()];
-					message[0] = 0;
-			
-					// USER INPUT 4: What are we doing to the user specified file
-					System.out.print("Would you like to read a file (read) or write to a file (write)? ");
-					try
-					{
-						// input
-						inputString = bufferRead.readLine();
-					}
-					catch(IOException ex)
-					{
-						ex.printStackTrace();
-			       	}
-
-					// If the user wants to read the file from the server
-					if(inputString.equals("read"))
-					{
-						// If we give a Read request, we will send ACK packets and receive DATA packets
-						sendPacketSize = new byte[4];
-						receivePacketSize = new byte[516];
-						message[1] = 1;		// 01 is the opcode for read
-						request = "Read";
-					}
-					
-					// If the user wants to write the file to the server
-					else if(inputString.equals("write"))
-					{
-						// If we give a Write request, we will send DATA packets and receive ACK packets
-					    	sendPacketSize = new byte[516];
-						receivePacketSize = new byte[4];
-						message[1] = 2;		// 02 is the opcode for write
-						request = "Write"; 
-					}
-					
-					// If the user wants an invalid request
-					else
-					{
-						message[1] = 0;		// 00 is the opcode for error
-						request = "Error"; 	// #11 invalid request
-					}
-					
-					// ERROR HANDLING
-					if((!new File(clientDir, fileName).exists()) && (request == "Write"))
-					{
-						// File does not exist
-						System.out.println("Error: File " + fileName + " does not exist.\n");
-					}
-					else if(new File(clientDir, fileName).exists() && request == "Read")
-					{
-						// File already exists
-						System.out.println("Error: File " + fileName + " already exists.\n");
-					}
-					else
-					{
-						break;
-					}
-					// End of Error Handling loop
+					UserInputs();
 				}
+				
+				setInputs();
+			
+				// Print the file path for the user
+				System.out.println("Transferring file " + directoryPath + "/" + fileName + "\n");
+					
+				// Create an empty byte array for the request packet
+				message = new byte[4 + fileName.length() + mode.length()];
+				message[0] = 0;
+			
+				// If the user wants to read the file from the server
+				if(request == "read")
+				{
+					// If we give a Read request, we will send ACK packets and receive DATA packets
+					sendPacketSize = new byte[4];
+					receivePacketSize = new byte[516];
+					message[1] = 1;		// 01 is the opcode for read
+				}
+				
+				// If the user wants to write the file to the server
+				else if(request == "write")
+				{
+					// If we give a Write request, we will send DATA packets and receive ACK packets
+				    sendPacketSize = new byte[516];
+					receivePacketSize = new byte[4];
+					message[1] = 2;		// 02 is the opcode for write
+				}
+				
+				// If the user wants an invalid request
+				else
+				{
+					message[1] = 0;		// 00 is the opcode for error
+				}
+					
+				
+				// ERROR HANDLING
+				if((!new File(clientDir, fileName).exists()) && (request == "write"))
+				{
+					// File does not exist
+					System.out.println("Error: File " + fileName + " does not exist.\n");
+					JOptionPane.showMessageDialog(popupWindow, "ERROR: Specified file does not exist \n" + "Please create and try again");
+					break;
+				}
+				else if(new File(clientDir, fileName).exists() && request == "read")
+				{
+					// File already exists
+					System.out.println("Error: File " + fileName + " already exists.\n");
+					JOptionPane.showMessageDialog(popupWindow, "ERROR: File already exists! \n" + "No overwrite function");
+					break;
+				}
+				else
+				{
+					//break;
+				}
+				// End of Error Handling
 		
 				// CREATING THE REQUESET PACKET!
+				// Saving the file being transferred
+				File transferFile = new File(clientDir,fileName);
+				
 				// Data in packets must be in byte form
 				byte[] fileNameToBytes = fileName.getBytes();
 				int os1 = fileNameToBytes.length;
@@ -310,7 +232,7 @@ public class Client
 				try
 				{	
 					// If we are operating in Test mode, Send to the Error Simulator
-					if(normal == false)
+					if(tORn == 1)
 					{
 						sendPacket = new DatagramPacket(message,message.length,InetAddress.getLocalHost(),23);
 					}
@@ -325,12 +247,22 @@ public class Client
 					e.printStackTrace();
 					System.exit(1);
 				}
+				
+				// Before we send, check access
+				if(request == "write" && readOnly(transferFile))
+				{
+					byte[] buf = {0,5,0,2};
+					sendPacket.setData(buf, 0, 4);
+					System.out.println(extractErrorData(sendPacket.getData()));
+					JOptionPane.showMessageDialog(popupWindow, "Access Violation: This file is Read Only!");
+					break;
+				}
 
 				// Send the packet
 				send(sendPacket);
 
 				// If we are operating in verbose mode, Print what we sent
-				if(quiet == false)
+				if(qORv == 1)
 				{
 					System.out.println("Sending: " + request + " Request");
 					System.out.println("Host: " + sendPacket.getAddress());
@@ -343,6 +275,7 @@ public class Client
 					String info = new String(message,0,length1);
 					System.out.println("String : " + info);
 					System.out.println("Bytes : " + Arrays.toString(message));
+					System.out.println("");
 				}
 
 				
@@ -350,12 +283,20 @@ public class Client
 				// We initialize the DatagramPacket that we receive into
 				receivePacket = new DatagramPacket(receivePacketSize, receivePacketSize.length);
 					
+				
 				receive();
+				
+				// End this transfer if Client times out
+				if(timeout)
+				{
+					timeout = false;
+					break;
+				}
 				
 
 		
 				// If we are operating in verbose mode, Print what we receive
-				if(quiet == false)
+				if(qORv == 1)
 				{
 					// Receive Packet info
 					System.out.println("Client received packet");
@@ -370,6 +311,7 @@ public class Client
 						System.out.print(" " + receivePacket.getData()[k]);
 					}
 					System.out.println();
+					System.out.println("\n");
 				}
 		
 				// If we have received an ACK packet
@@ -401,29 +343,28 @@ public class Client
 				//////////////////////////////////////////////////////////////
 				//	CLIENT BEHAVIOUR IF IT RECEIVES AN ERROR FROM THE SERVER//
 				//////////////////////////////////////////////////////////////
+				JOptionPane.showMessageDialog(popupWindow, "Server produced an error! \n" + "Please try again");
 				}
-				
-				// Last step of the loop is to ask the user if they want to kill the client
-				System.out.println("Would you like to kill the client? (k to kill, any other key to keep running)");
-				try
-				{
-					inputString = bufferRead.readLine();
-		        
-					// If the user wanted to kill the client
-					if(inputString.equals("k"))
-					{
-						System.exit(0);
-					}
-				}
-				catch(IOException ex)
-				{
-		        ex.printStackTrace();
-		        }
-				//END OF LOOP!
+				break;
 			}
-			// END OF CLIENT ALGORITHM
+			// Last step of the loop is to ask the user if they want to kill the client
+			int kill = JOptionPane.showConfirmDialog(popupWindow,"Would you like to continue?", "Kill Client", JOptionPane.YES_NO_OPTION);
+			if(kill != 0)
+			{
+				System.exit(0);
+			}
+			else
+			{
+				System.out.println(" ");
+				allValidInputs = false;
+			}
+		//END OF LOOP!
 		}
+	// END OF CLIENT ALGORITHM!!!!!!!!!!!!!!!!!!
 	}
+
+
+	
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -459,11 +400,21 @@ public class Client
 			// If the file was successfully added to the directory
 			if(fileAdded)
 			{
-				if(quiet == false)
+				if(qORv == 1)
 				{
 					System.out.println("Received file created in the client directory.");
 					System.out.println("File: " + receivedFile.toString());
 				}
+			}
+		}
+		// If file already exists in client directory
+		else
+		{
+			int overWrite = JOptionPane.showConfirmDialog(popupWindow,"WARNING: \n" + "File already exists, do you want to append to flie?", "File Exists", JOptionPane.YES_NO_OPTION);
+			// If we dont want to append the file
+			if(overWrite != 0)
+			{
+				haltCurrentTransfer = true;
 			}
 		}
 		
@@ -480,7 +431,13 @@ public class Client
 		{
 			// Properly formatting data to be written
 			String stringData = new String(resize(byteData));
+			System.out.println( "\n" + stringData + "\n");
 			
+			for (int i = 0; i < resize(byteData).length; i++)
+	    	{
+	    		System.out.print(resize(byteData)[i] + ", ");
+	    	}
+			System.out.println(" ");
 			// Write data to file
 			FileWriter fw = new FileWriter(f.getAbsolutePath(), fileWriterAppend);
 			BufferedWriter bw = new BufferedWriter(fw);
@@ -510,7 +467,7 @@ public class Client
 		portNum = receivePacket.getPort();
 	    sendPacket.setPort(portNum);
 	    
-	    System.out.println("Sending data to: " + sendPacket.getPort());
+	    System.out.println("Sending data to: " + sendPacket.getPort() + "\n");
 	    
 	    // The first packet number
 	    int packNum = 1;
@@ -535,6 +492,7 @@ public class Client
 	    // while loop cycles through data in file 512 bytes at a time
 	    while (((n = in.read(fdata)) != -1) && !haltCurrentTransfer)
 	    {
+	    	pack[1] = 3;
 	    	// setting bytes for packet number converting from int to 2 bytes
 	    	pack[3] = (byte) (packNum & 0xFF);
 	    	pack[2] = (byte) ((packNum >> 8) & 0xFF); 
@@ -545,7 +503,7 @@ public class Client
 	    	{
 	    		// resized array to match the remaining bytes in file (from 512 to < 512)
 	    	    byte[] lastData = resize(fdata);
-	    	    System.out.println(lastData[3]);
+	    	    //System.out.println(lastData[3]);
 		
 	    		System.out.println("data not 512 bytes");
 	    		System.out.println("Size of this is array is: " + lastData.length);
@@ -565,13 +523,14 @@ public class Client
 	        	a &= 0xFF;
 	        	b &= 0xFF;
 	        	
-	        	if(quiet == false)
+	        	if(qORv == 1)
 		    	{
 		    		System.out.println("The packet being sent contains: ");
 		    		for (int i = 0; i < lastPack.length; i++)
 		    		{
-			    		System.out.print(" " + lastPack[i]);
+			    		System.out.print( lastPack[i] + " ");
 			    	}
+		    		System.out.println("");
 		    	}
 	    	}
 	    	
@@ -581,6 +540,7 @@ public class Client
 	    		// Store data in pack (offset from the start by 4)
 	    		System.arraycopy(fdata, 0, pack, 4, fdata.length);
 	    		// create a Datagram Packet out of byte array pack
+	    		
 	    		createPack(pack);
 	    	
 	    		// setting bytes for packet number
@@ -589,7 +549,7 @@ public class Client
 	    		a &= 0xFF;
 	    		b &= 0xFF;
 	    		
-	    		if(quiet == false)
+	    		if(qORv == 1)
 		    	{
 		    		System.out.println("The packet being sent contains: ");
 		    		for (int i = 0; i < pack.length; i++)
@@ -600,15 +560,24 @@ public class Client
 	    	}
 	
 	    	// Send the current sendPacket
-	    	System.out.println("\nAbout to send");
-	    	System.out.println("About to send");
 	    	send(sendPacket);
 	    	
 	    	// Clear all bytes in fdata
-	    	re(fdata);
+	    	
 	
 	    	// Wait for next packet
-	    	receive();   	
+	    	receive();
+	    	re(fdata);
+	    	re(pack);
+	    	//sendPacket.setData(re(sendPacket.getData()));
+	    	
+	    	// End this transfer if Client times out
+			if(timeout)
+			{
+				timeout = false;
+				break;
+			}
+	    	
 	    }
 	    // All the data has been received, End loop
 	    in.close();
@@ -629,6 +598,7 @@ public class Client
 		
 		// Cut the first 4 bytes off the DATA packet
 		byte[] writeData = cutOP(receivePacket.getData());
+		
 		// Write data to file
 		appendToFile(receivedFile, writeData);
 		// After the first write we want to append the data to the file
@@ -657,15 +627,21 @@ public class Client
 			
 			// Write to file
 			handleRead();
-			System.out.println("Data has been writen to the file!");
 			
 			// Send ACK
-			sendAck(opNum);
+			//sendAck(opNum);
 			
 			if(receivePacket.getData()[515] != (byte) 0)
 			{
 				receivePacket.setData(re(receivePacket.getData()));
+				
 				receive();
+				// End this transfer if Client times out
+				if(timeout)
+				{
+					timeout = false;
+					break;
+				}
 			
 			}
 			
@@ -712,9 +688,9 @@ public class Client
 		sendPacket.setPort(receivePacket.getPort());
 		sendPacket.setData(code);
 		
-		if(quiet == false)
+		if(qORv == 1)
 		{
-			System.out.println("Server sent ACK packet");
+			System.out.println("Client sent ACK packet " );
 			System.out.println("To Host: " + sendPacket.getAddress());
 			System.out.println("Destination host port: " + sendPacket.getPort());
 			System.out.print("Response Packet: ");
@@ -727,8 +703,10 @@ public class Client
 		}
 		
 			send(sendPacket);
+			System.out.println("");
 
 	}
+	
 
 
 	/*
@@ -737,7 +715,6 @@ public class Client
 	 */
 	public void send(DatagramPacket sP)
 	{		
-		System.out.println("Sending!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		try
 		{
 			// Send
@@ -751,7 +728,7 @@ public class Client
 			System.exit(1);
 		}
 		
-		System.out.println("Client has sent packet!!");
+		System.out.println("Client has sent packet!!" +"\n");
 	}
 	
 	/*
@@ -761,7 +738,7 @@ public class Client
 	{
 		int n = 0;
 		while (n<5){
-			if(quiet == false)                          
+			if(qORv == 1)                          
 			{
 			// Where we are receiving the packet
 				System.out.println("Client is receiving at " + sendReceiveSocket.getLocalPort());
@@ -770,6 +747,7 @@ public class Client
 			{
 				sendReceiveSocket.receive(receivePacket);
 				// when the client is sending ACKS
+				
 				if ((sendPacket.getData()[3] < receivePacket.getData()[3]|| sendPacket.getData()[2] < receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4){
 					System.out.println("We have received an Data Packet");
 					return;
@@ -780,8 +758,12 @@ public class Client
 					System.out.println("We have received a ACK packet");
 					return;
 				}
-				else if ((sendPacket.getData()[1] == 1 || sendPacket.getData()[1] == 2) && receivePacket.getData()[3] == 0){
-					System.out.println("We have received the first response");
+				else if ((sendPacket.getData()[1] == 1  && receivePacket.getData()[3] == 1)){
+					System.out.println("We have received the first response \n");
+					return;
+				}
+				else if(sendPacket.getData()[1] == 2  && receivePacket.getData()[3] == 0){
+					System.out.println("We have received the first response \n");
 					return;
 				}
 				
@@ -792,18 +774,31 @@ public class Client
 					return;
 				}
 				System.out.println(receivePacket.getData()[2] + " " + receivePacket.getData()[3] + " sent " + sendPacket.getData()[2] + " " + sendPacket.getData()[3]);
-				System.out.println("Last Packet received was not what was exected");
+				System.out.println("Last Packet received was not what was exected it was\n");
+				
+				for (int i = 0; i < receivePacket.getData().length; i++)
+		    	{
+		    		System.out.print(receivePacket.getData()[i] + ", ");
+		    	}
+				
+				if(receivePacket.getData()[1] == 3)
+				{
+					System.out.println("Resending ");
+					send(sendPacket);
+				}
 				
 			}
 			catch(IOException e)
 			{
 				System.out.println("Client didn't get a response \n resending packet");
 				send(sendPacket);
+				n++;
 			}
 			
-			n++;
+			
 		}
 		System.out.println("Client didn't get a response and has now made 5 attempts. Client is ending transfer.");
+		timeout = true;
 	}
 	
 	
@@ -831,7 +826,7 @@ public class Client
     public byte[] resize (byte[] data)
     {
     	int i;
-    	for(i = 4; i < data.length; i++)
+    	for(i = 3; i < data.length; i++)
     	{
     		if(data[i] == 0x00)
     		{
@@ -840,7 +835,7 @@ public class Client
     		}
     	}
     	
-    	data = Arrays.copyOf(data, i+1);
+    	data = Arrays.copyOf(data, i);
     	return data;
     }
     
@@ -850,7 +845,7 @@ public class Client
      */
     public byte[] cutOP (byte[] data)
     {
-    	byte[] temp = new byte[data.length];
+    	byte[] temp = new byte[data.length-4];
     	int j = 0;
     	for(int i = 4; i < data.length; i++)
     	{
@@ -859,6 +854,102 @@ public class Client
     	}
     	return temp;
     } 
+    
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//	User Interface
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    private void UserInputs()
+    {
+		String[] tORn = {"test", "normal"};
+		String[] qORv = {"verbose","quiet"};
+		String[] wORrORe = {"write", "read", "error"};
+	
+		// USER INPUT 1: Test mode (Uses ErrorSimulator) or Normal mode (Doesn't uses the ErrorSimulator)
+		String mode = (String) JOptionPane.showInputDialog(popupWindow,"Choose a Mode:", "Mode", JOptionPane.QUESTION_MESSAGE, null, tORn, tORn[0]);
+	
+		// USER INPUT 2: Quiet mode (Minimal information displayed) or Verbose mode (Displays detailed information)
+		String sound = (String) JOptionPane.showInputDialog(popupWindow,"Choose Output Type:", "Output", JOptionPane.QUESTION_MESSAGE, null, qORv, qORv[0]);
+	
+		//USER INPUT 3: What file will we be transferring?
+		String f = JOptionPane.showInputDialog(null,"Specify File:", "File", JOptionPane.QUESTION_MESSAGE);
+	
+		//USER INPUT 4: What are we doing to the user specified file
+		String requestType = (String) JOptionPane.showInputDialog(popupWindow,"Choose Request Type:", "Request", JOptionPane.QUESTION_MESSAGE, null, wORrORe, wORrORe[0]);
+	
+		if(mode != null && sound != null && f != null && requestType != null)
+		{
+			System.out.println("ALL VALID INPUTS RECEIVED :)");
+			if(mode == "test"){this.tORn = 1;}
+			if(mode == "normal"){this.tORn = 2;}
+			if(sound == "quiet"){this.qORv = 2;}
+			if(sound == "verbose"){this.qORv = 1;}
+			if(requestType == "write"){this.request = "write";}
+			if(requestType == "read"){this.request = "read";}
+			if(requestType == "error"){this.request = "error";}
+			this.fileName = f;
+			allValidInputs = true;
+		}
+		else
+		{
+			if(mode == null)
+			{
+				JOptionPane.showMessageDialog(popupWindow, "Mode not selected!");
+			}
+			if(sound == null)
+			{
+				JOptionPane.showMessageDialog(popupWindow, "Output Type not selected!");
+			}
+			if(f == null)
+			{
+				JOptionPane.showMessageDialog(popupWindow, "File not selected!");
+			}
+			if(requestType == null)
+			{
+				JOptionPane.showMessageDialog(popupWindow, "Request not selected!");
+			}
+		}
+	}
+
+    private void setInputs()
+    {
+    	if(tORn == 1)
+    	{
+    		System.out.println("We are now in test mode!");
+    		// The request packets will be sent to the Error Simulator
+    		portNum = 23;		
+    	}
+
+    	// If the user inputs 2
+    	else if(tORn == 2)
+    	{
+    		System.out.println("We are now in normal mode!\n");
+    		// The request packets will be sent to the Server
+    		portNum = 69;		
+    		}
+
+    	// If the user input was invalid
+    	else
+    	{
+    		System.out.println("Invalid option");
+    	}
+
+    	if(qORv == 1)
+    	{
+    		System.out.println("We are now in quiet mode\n");
+    	}
+
+    	// If the user inputs 2
+    	else if(qORv == 2)
+    	{
+    		System.out.println("We are now in verbose mode\n");
+    	}
+
+    	// If the user input is invalid
+    	else
+    	{
+    		System.out.println("Invalid option");
+    	}
+    }
     
     
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -896,12 +987,27 @@ public class Client
     	return errMsgStr;
     }
     
+    /**
+  	 * 
+  	 * @param file
+  	 * @return
+  	 */
+  	private boolean readOnly(File file)
+  	{
+  		if(file.canWrite())
+  		{
+  			return false;
+  		}
+  		return true;
+  	}
     
+ 
+  	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	MAIN
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
-    /*
+	/*
      * The MAIN FUNCTION of the Client class
      */
 	public static void main(String[] args) 
