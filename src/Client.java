@@ -592,9 +592,7 @@ public class Client
 		// Save the first 4 bytes of the DATA packet as 'opNum'
 		System.arraycopy(receivePacket.getData(), 0, opNum, 0, 4);
 		
-		byte[] temp = fileName.getBytes();
-		// Check to see if the file has been created before
-		fileCreation(temp);
+		
 		
 		// Cut the first 4 bytes off the DATA packet
 		byte[] writeData = cutOP(receivePacket.getData());
@@ -615,6 +613,9 @@ public class Client
 	public void waitForData()
 	{
 		// While the DATA packet contains 512 bytes
+		byte[] temp = fileName.getBytes();
+		// Check to see if the file has been created before
+		fileCreation(temp);
 		while((receivePacket.getData()[515] != (byte) 0) && !haltCurrentTransfer)
 		{
 			// If the client receives an error packet
@@ -737,10 +738,16 @@ public class Client
 	public void receive ()
 	{
 		int n = 0;
+		byte a = sendPacket.getData()[3];
+		a +=1;
+		byte b = sendPacket.getData()[2];
+		b +=1;
+		
 		while (n<5){
 			if(qORv == 1)                          
 			{
 			// Where we are receiving the packet
+
 				System.out.println("Client is receiving at " + sendReceiveSocket.getLocalPort());
 			}
 			try
@@ -748,7 +755,7 @@ public class Client
 				sendReceiveSocket.receive(receivePacket);
 				// when the client is sending ACKS
 				
-				if ((sendPacket.getData()[3] < receivePacket.getData()[3]|| sendPacket.getData()[2] < receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4){
+				if ((a == receivePacket.getData()[3]|| b == receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4){
 					System.out.println("We have received an Data Packet");
 					return;
 				} 
