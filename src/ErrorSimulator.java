@@ -344,7 +344,8 @@ public class ErrorSimulator
 						System.out.println("\nDelayed packet to Client\n");
 						currentPacketNumber--;
 						ScheduledFuture sf = scheduledPool.schedule(callabledelayedTask, delayTime, TimeUnit.MILLISECONDS);
-						delayedPacket = receivePacket;
+						delayedPacket = sendPacket;
+						setFlag(receivePacket);
 						delayPacketcounter++;
 						continue;
 						}
