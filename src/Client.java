@@ -78,7 +78,7 @@ public class Client
 		{
 			sendReceiveSocket = new DatagramSocket();
 			//sendReceiveSocket.setSendBufferSize(1000);
-			sendReceiveSocket.setSoTimeout(1500);
+			sendReceiveSocket.setSoTimeout(1000);
 		}
 		catch(SocketException se)
 		{
@@ -743,7 +743,7 @@ public class Client
 		byte b = sendPacket.getData()[2];
 		b +=1;
 		
-		while (n<5){
+		while (n<10){
 			if(qORv == 1)                          
 			{
 			// Where we are receiving the packet
@@ -776,8 +776,8 @@ public class Client
 				
 				
 				// when the client is sending ERRORS
-				if (sendPacket.getData()[1] == 5 ) {
-					System.out.println("We have received");
+				if (receivePacket.getData()[1] == 5 ) {
+					System.out.println("We have received an error packet");
 					return;
 				}
 				System.out.println(receivePacket.getData()[2] + " " + receivePacket.getData()[3] + " sent " + sendPacket.getData()[2] + " " + sendPacket.getData()[3]);
@@ -788,16 +788,18 @@ public class Client
 		    		System.out.print(receivePacket.getData()[i] + ", ");
 		    	}
 				
-				if(receivePacket.getData()[1] == 3)
+				/*if(receivePacket.getData()[1] == 3)
 				{
 					System.out.println("Resending ");
 					send(sendPacket);
-				}
+				}*/
 				
 			}
 			catch(IOException e)
 			{
-				System.out.println("Client didn't get a response \n resending packet");
+				System.out.println("Client didn't get a response");
+				//if(sendPacket.getData()[1] == 3)
+				System.out.println("resending");
 				send(sendPacket);
 				n++;
 			}
