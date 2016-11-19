@@ -10,7 +10,7 @@ public class SubServer implements Runnable {
 //////////////////////////////////////////////////
 	private static String filePath;
 	private static final int SOCKET_TIMEOUT = 1000;
-	private static final int TIMEOUT_ATTEMPTS = 5;
+	private static final int TIMEOUT_ATTEMPTS = 10;
 //////////////////////////////////////////////////
 	
 	// Datagrams to be used in the SubServer
@@ -199,7 +199,8 @@ public class SubServer implements Runnable {
     	// File already exists ERROR
     	else
     	{
-    		JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
+    		//JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
+    		System.out.println("File already exists sending error");
     		sendPacket.setData(createErrorPacket(new byte[] {0, 5, 0, 6}));
     		errorOut = true;
     		try 
@@ -383,7 +384,7 @@ public class SubServer implements Runnable {
 		    	re(fdata);
 		    	
 		    	
-		    	//System.out.println("Reaching receive");
+		    	System.out.println("Reaching receive");
 		    	receive();
 		    	//System.out.println( "\n \n" + receivePacket.getData()[1] + " 2nd byte of data being sent");
 		    	sendPacket.setData(re(sendPacket.getData()));
@@ -563,6 +564,7 @@ public class SubServer implements Runnable {
 	 */
 	public void receive()
 	{
+		
 		for(int attempt = 0; attempt < TIMEOUT_ATTEMPTS; attempt++)
 		{
 			receivePacket.setData(re(receivePacket.getData()));
@@ -571,10 +573,14 @@ public class SubServer implements Runnable {
 				subServerSocket.receive(receivePacket);
 				byte[] spd = sendPacket.getData();
 				byte[] rpd = receivePacket.getData();
+				byte a = spd[3];
+				a +=1;
+				byte b = spd[2];
+				b +=1;
 				System.out.println("Sent packet " + Arrays.toString(spd));
 				System.out.println("Receive packet " + Arrays.toString(rpd));
 				// Receive data (Write to server)
-				if(receivePacket.getData()[1] == 3 && ((rpd[3] == 0 && rpd[2] == 0) ||( spd[3] < rpd[3] || spd[2] < rpd[2])))
+				if(receivePacket.getData()[1] == 3 && ((rpd[3] == 0 && rpd[2] == 0) ||( a == rpd[3] || b == rpd[2])))
 				{
 					System.out.println("We have received an Data Packet");
 					System.out.println("pack num of recieved " + rpd [2] + " " + rpd[3]);
@@ -597,7 +603,7 @@ public class SubServer implements Runnable {
 				else
 				{
 					System.out.println("Invalid packet received resending data, attempt number " + attempt);
-					sendPacket();
+					//sendPacket();
 				}
 			}
 			catch(SocketTimeoutException e)
