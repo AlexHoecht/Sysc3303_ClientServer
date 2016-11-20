@@ -7,6 +7,9 @@
 public class Error {
 	
 	private ErrorType errorType; // ErrorType enum
+
+
+
 	private int packetNumber;
 	
 	
@@ -27,6 +30,10 @@ public class Error {
 	public ErrorType getErrorType()
 	{
 		return errorType;
+	}
+	
+	public void setErrorType(ErrorType errorType) {
+		this.errorType = errorType;
 	}
 	
 	
