@@ -9,7 +9,7 @@ public class SubServer implements Runnable {
 	
 //////////////////////////////////////////////////
 	private static String filePath;
-	private static final int SOCKET_TIMEOUT = 1000;
+	private static final int SOCKET_TIMEOUT = 100;
 	private static final int TIMEOUT_ATTEMPTS = 10;
 //////////////////////////////////////////////////
 	
@@ -550,7 +550,7 @@ public class SubServer implements Runnable {
 	 */
 	public void sendPacket(){
 		try {
-			System.out.println(receivePacket.getPort());
+			System.out.println("Receive packet port: " + receivePacket.getPort());
 			subServerSocket.send(sendPacket);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
