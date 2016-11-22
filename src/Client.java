@@ -78,7 +78,7 @@ public class Client
 		{
 			sendReceiveSocket = new DatagramSocket();
 			//sendReceiveSocket.setSendBufferSize(1000);
-			sendReceiveSocket.setSoTimeout(1000);
+			sendReceiveSocket.setSoTimeout(100);
 		}
 		catch(SocketException se)
 		{
@@ -476,6 +476,7 @@ public class Client
 	    // a and b used for printing packet number without negatives
 	    int a;
 	    int b;
+	    boolean mul512 = true;
 	
 	    // the data of the Datagram packet
 	    byte[] fdata = new byte[512];
@@ -501,6 +502,7 @@ public class Client
 	    	// if end of data from file is null then the remaining part of the file was under 512 bytes
 	    	if (fdata[511] == 0x00)
 	    	{
+	    		mul512 = false;
 	    		// resized array to match the remaining bytes in file (from 512 to < 512)
 	    	    byte[] lastData = resize(fdata);
 	    	    //System.out.println(lastData[3]);
@@ -580,6 +582,13 @@ public class Client
 	    	
 	    }
 	    // All the data has been received, End loop
+	    if (mul512){
+	    	byte[] lastPack512 = {0, 3, (byte) ((packNum >> 8) & 0xFF), (byte) (packNum & 0xFF), 0};
+	    	sendPacket.setData(lastPack512);
+	    	send(sendPacket);
+	    	
+	    }
+	    System.out.println("DONE WRITE");
 	    in.close();
 	}
 
