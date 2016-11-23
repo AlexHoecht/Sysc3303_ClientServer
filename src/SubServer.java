@@ -9,8 +9,8 @@ public class SubServer implements Runnable {
 	
 //////////////////////////////////////////////////
 	private static String filePath;
-	private static final int SOCKET_TIMEOUT = 1000;
-	private static final int TIMEOUT_ATTEMPTS = 5;
+	private static final int SOCKET_TIMEOUT = 100;
+	private static final int TIMEOUT_ATTEMPTS = 10;
 //////////////////////////////////////////////////
 	
 	// Datagrams to be used in the SubServer
@@ -199,7 +199,8 @@ public class SubServer implements Runnable {
     	// File already exists ERROR
     	else
     	{
-    		JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
+    		//JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
+    		System.out.println("File already exists sending error");
     		sendPacket.setData(createErrorPacket(new byte[] {0, 5, 0, 6}));
     		errorOut = true;
     		try 
@@ -221,6 +222,7 @@ public class SubServer implements Runnable {
 	 */
 	public void appendToFile(File f, byte[] byteData)
 	{
+		if(receivePacket.getData()[4] != 0x00){
 		try
 		{
 			String stringData = new String(cutEnd(byteData));
@@ -240,6 +242,7 @@ public class SubServer implements Runnable {
 		catch (IOException e)
 		{
 			e.printStackTrace();
+		}
 		}
 	}
 
@@ -302,6 +305,7 @@ public class SubServer implements Runnable {
 				
 			//op code and block # + fdata
 		    byte[] pack = new byte[516];
+		    boolean mul512 = true;
 		
 		    // used for cycling through file
 		    int n;
@@ -329,7 +333,7 @@ public class SubServer implements Runnable {
 		    		// resized array to match the remaining bytes in file (from 512 to < 512)
 		    	    byte[] lastData = cutEnd(fdata);
 		    	    System.out.println(lastData[3]);
-			
+		    	    mul512 = false;
 		    		System.out.println("data not 512 bytes");
 		    		System.out.println("Size of this is array is: " + lastData.length);
 			
@@ -383,10 +387,16 @@ public class SubServer implements Runnable {
 		    	re(fdata);
 		    	
 		    	
-		    	//System.out.println("Reaching receive");
+		    	System.out.println("Reaching receive");
 		    	receive();
 		    	//System.out.println( "\n \n" + receivePacket.getData()[1] + " 2nd byte of data being sent");
 		    	sendPacket.setData(re(sendPacket.getData()));
+		    }
+		    if (mul512){
+		    	byte[] lastPack512 = {0, 3, (byte) ((packNum >> 8) & 0xFF), (byte) (packNum & 0xFF), 0};
+		    	sendPacket.setData(lastPack512);
+		    	sendPacket();
+		    	
 		    }
 		    System.out.println("Leaving Send Data");
 			in.close();
@@ -462,7 +472,9 @@ public class SubServer implements Runnable {
 			System.out.println("data packet has been writen to file");
 			
 			// Wait to receive another packet
+			if (receivePacket.getData()[515] != 0)
 			receive();
+			
 		}
 		
 		// When the data is less then 512 bytes
@@ -526,7 +538,7 @@ public class SubServer implements Runnable {
 		
 		for(int k = 0; k<ack.length;k++)
 		{
-			System.out.print(" " + ack[k]);
+			System.out.print(" " + sendPacket.getData()[k]);
 		}
 		
 		System.out.println();
@@ -547,7 +559,7 @@ public class SubServer implements Runnable {
 	 */
 	public void sendPacket(){
 		try {
-			System.out.println(receivePacket.getPort());
+			System.out.println("Receive packet port: " + receivePacket.getPort());
 			subServerSocket.send(sendPacket);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -561,6 +573,7 @@ public class SubServer implements Runnable {
 	 */
 	public void receive()
 	{
+		
 		for(int attempt = 0; attempt < TIMEOUT_ATTEMPTS; attempt++)
 		{
 			receivePacket.setData(re(receivePacket.getData()));
@@ -569,10 +582,14 @@ public class SubServer implements Runnable {
 				subServerSocket.receive(receivePacket);
 				byte[] spd = sendPacket.getData();
 				byte[] rpd = receivePacket.getData();
+				byte a = spd[3];
+				a +=1;
+				byte b = spd[2];
+				b +=1;
 				System.out.println("Sent packet " + Arrays.toString(spd));
 				System.out.println("Receive packet " + Arrays.toString(rpd));
 				// Receive data (Write to server)
-				if(receivePacket.getData()[1] == 3 && ((rpd[3] == 0 && rpd[2] == 0) ||( spd[3] < rpd[3] || spd[2] < rpd[2])))
+				if(receivePacket.getData()[1] == 3 && ((rpd[3] == 0 && rpd[2] == 0) ||( a == rpd[3] || b == rpd[2])))
 				{
 					System.out.println("We have received an Data Packet");
 					System.out.println("pack num of recieved " + rpd [2] + " " + rpd[3]);
@@ -595,7 +612,7 @@ public class SubServer implements Runnable {
 				else
 				{
 					System.out.println("Invalid packet received resending data, attempt number " + attempt);
-					sendPacket();
+					//sendPacket();
 				}
 			}
 			catch(SocketTimeoutException e)

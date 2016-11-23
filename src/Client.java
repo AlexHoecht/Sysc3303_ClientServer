@@ -78,7 +78,7 @@ public class Client
 		{
 			sendReceiveSocket = new DatagramSocket();
 			//sendReceiveSocket.setSendBufferSize(1000);
-			sendReceiveSocket.setSoTimeout(1500);
+			sendReceiveSocket.setSoTimeout(100);
 		}
 		catch(SocketException se)
 		{
@@ -427,6 +427,7 @@ public class Client
 	 */
 	public void appendToFile(File f, byte[] byteData)
 	{
+		if (receivePacket.getData()[4] != 0x00)
 		try
 		{
 			// Properly formatting data to be written
@@ -476,6 +477,7 @@ public class Client
 	    // a and b used for printing packet number without negatives
 	    int a;
 	    int b;
+	    boolean mul512 = true;
 	
 	    // the data of the Datagram packet
 	    byte[] fdata = new byte[512];
@@ -492,6 +494,7 @@ public class Client
 	    // while loop cycles through data in file 512 bytes at a time
 	    while (((n = in.read(fdata)) != -1) && !haltCurrentTransfer)
 	    {
+	    	pack[1] = 3;
 	    	// setting bytes for packet number converting from int to 2 bytes
 	    	pack[3] = (byte) (packNum & 0xFF);
 	    	pack[2] = (byte) ((packNum >> 8) & 0xFF); 
@@ -500,6 +503,7 @@ public class Client
 	    	// if end of data from file is null then the remaining part of the file was under 512 bytes
 	    	if (fdata[511] == 0x00)
 	    	{
+	    		mul512 = false;
 	    		// resized array to match the remaining bytes in file (from 512 to < 512)
 	    	    byte[] lastData = resize(fdata);
 	    	    //System.out.println(lastData[3]);
@@ -539,6 +543,7 @@ public class Client
 	    		// Store data in pack (offset from the start by 4)
 	    		System.arraycopy(fdata, 0, pack, 4, fdata.length);
 	    		// create a Datagram Packet out of byte array pack
+	    		
 	    		createPack(pack);
 	    	
 	    		// setting bytes for packet number
@@ -561,10 +566,13 @@ public class Client
 	    	send(sendPacket);
 	    	
 	    	// Clear all bytes in fdata
-	    	re(fdata);
+	    	
 	
 	    	// Wait for next packet
 	    	receive();
+	    	re(fdata);
+	    	re(pack);
+	    	//sendPacket.setData(re(sendPacket.getData()));
 	    	
 	    	// End this transfer if Client times out
 			if(timeout)
@@ -575,6 +583,13 @@ public class Client
 	    	
 	    }
 	    // All the data has been received, End loop
+	    if (mul512){
+	    	byte[] lastPack512 = {0, 3, (byte) ((packNum >> 8) & 0xFF), (byte) (packNum & 0xFF), 0};
+	    	sendPacket.setData(lastPack512);
+	    	send(sendPacket);
+	    	
+	    }
+	    System.out.println("DONE WRITE");
 	    in.close();
 	}
 
@@ -587,9 +602,7 @@ public class Client
 		// Save the first 4 bytes of the DATA packet as 'opNum'
 		System.arraycopy(receivePacket.getData(), 0, opNum, 0, 4);
 		
-		byte[] temp = fileName.getBytes();
-		// Check to see if the file has been created before
-		fileCreation(temp);
+		
 		
 		// Cut the first 4 bytes off the DATA packet
 		byte[] writeData = cutOP(receivePacket.getData());
@@ -610,6 +623,9 @@ public class Client
 	public void waitForData()
 	{
 		// While the DATA packet contains 512 bytes
+		byte[] temp = fileName.getBytes();
+		// Check to see if the file has been created before
+		fileCreation(temp);
 		while((receivePacket.getData()[515] != (byte) 0) && !haltCurrentTransfer)
 		{
 			// If the client receives an error packet
@@ -732,10 +748,16 @@ public class Client
 	public void receive ()
 	{
 		int n = 0;
-		while (n<5){
+		byte a = sendPacket.getData()[3];
+		a +=1;
+		byte b = sendPacket.getData()[2];
+		b +=1;
+		
+		while (n<10){
 			if(qORv == 1)                          
 			{
 			// Where we are receiving the packet
+
 				System.out.println("Client is receiving at " + sendReceiveSocket.getLocalPort());
 			}
 			try
@@ -743,7 +765,7 @@ public class Client
 				sendReceiveSocket.receive(receivePacket);
 				// when the client is sending ACKS
 				
-				if ((sendPacket.getData()[3] < receivePacket.getData()[3]|| sendPacket.getData()[2] < receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4){
+				if ((a == receivePacket.getData()[3]|| b == receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4){
 					System.out.println("We have received an Data Packet");
 					return;
 				} 
@@ -764,8 +786,8 @@ public class Client
 				
 				
 				// when the client is sending ERRORS
-				if (sendPacket.getData()[1] == 5 ) {
-					System.out.println("We have received");
+				if (receivePacket.getData()[1] == 5 ) {
+					System.out.println("We have received an error packet");
 					return;
 				}
 				System.out.println(receivePacket.getData()[2] + " " + receivePacket.getData()[3] + " sent " + sendPacket.getData()[2] + " " + sendPacket.getData()[3]);
@@ -775,16 +797,24 @@ public class Client
 		    	{
 		    		System.out.print(receivePacket.getData()[i] + ", ");
 		    	}
-				System.out.println("Resending ");
-				send(sendPacket);
+				
+				/*if(receivePacket.getData()[1] == 3)
+				{
+					System.out.println("Resending ");
+					send(sendPacket);
+				}*/
+				
 			}
 			catch(IOException e)
 			{
-				System.out.println("Client didn't get a response \n resending packet");
+				System.out.println("Client didn't get a response");
+				//if(sendPacket.getData()[1] == 3)
+				System.out.println("resending");
 				send(sendPacket);
+				n++;
 			}
 			
-			n++;
+			
 		}
 		System.out.println("Client didn't get a response and has now made 5 attempts. Client is ending transfer.");
 		timeout = true;
