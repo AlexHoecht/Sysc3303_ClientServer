@@ -222,6 +222,7 @@ public class SubServer implements Runnable {
 	 */
 	public void appendToFile(File f, byte[] byteData)
 	{
+		if(receivePacket.getData()[4] != 0x00){
 		try
 		{
 			String stringData = new String(cutEnd(byteData));
@@ -241,6 +242,7 @@ public class SubServer implements Runnable {
 		catch (IOException e)
 		{
 			e.printStackTrace();
+		}
 		}
 	}
 
@@ -303,6 +305,7 @@ public class SubServer implements Runnable {
 				
 			//op code and block # + fdata
 		    byte[] pack = new byte[516];
+		    boolean mul512 = true;
 		
 		    // used for cycling through file
 		    int n;
@@ -330,7 +333,7 @@ public class SubServer implements Runnable {
 		    		// resized array to match the remaining bytes in file (from 512 to < 512)
 		    	    byte[] lastData = cutEnd(fdata);
 		    	    System.out.println(lastData[3]);
-			
+		    	    mul512 = false;
 		    		System.out.println("data not 512 bytes");
 		    		System.out.println("Size of this is array is: " + lastData.length);
 			
@@ -388,6 +391,12 @@ public class SubServer implements Runnable {
 		    	receive();
 		    	//System.out.println( "\n \n" + receivePacket.getData()[1] + " 2nd byte of data being sent");
 		    	sendPacket.setData(re(sendPacket.getData()));
+		    }
+		    if (mul512){
+		    	byte[] lastPack512 = {0, 3, (byte) ((packNum >> 8) & 0xFF), (byte) (packNum & 0xFF), 0};
+		    	sendPacket.setData(lastPack512);
+		    	sendPacket();
+		    	
 		    }
 		    System.out.println("Leaving Send Data");
 			in.close();
