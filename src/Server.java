@@ -40,6 +40,8 @@ public class Server
 	private Thread t;
 	// Boolean denoting whether a client connection manager is running. 
 	private boolean hasThreadStarted;
+	// Boolean denoting whether the server has been requested to shut down
+	public boolean killServer;
 	
 	/*
 	 * The main constructor for the Server class.
@@ -48,6 +50,7 @@ public class Server
 	public Server()
 	{
 		hasThreadStarted = false;
+		killServer = false;
 		
 		// Initialize datagram socket
 		try
@@ -91,10 +94,10 @@ public class Server
 		directoryPath = directory.getAbsolutePath().replace('\\',  '/');
 		System.out.println("Directory " + directoryPath + "\n");
 		
-		Thread k = new Thread(new KillerThread(this));
-		k.start();
+		Thread serverKiller = new Thread(new ServerKiller(this));
+		serverKiller.start();
 		
-		while(true)
+		while(!killServer)
 		{
 			// Byte arrays created to pack and unpacked data
 			byte[] msg = new byte[516];
@@ -207,13 +210,17 @@ public class Server
 				System.out.println("Information as Bytes:\t"+ Arrays.toString(truncZeroesFromReq(msgBytes)) + "\n");
 				
 				// Create client connection manager
-				System.out.println("Spawning new client connection manager\n");
-				
-				
-				
+				System.out.println("Spawning new client connection manager\n");	
 			}
 		}
-
+		try
+		{
+			kill();
+		}
+		catch(InterruptedException e)
+		{
+			e.printStackTrace();
+		}
 	}
 	
 	/**
@@ -299,13 +306,13 @@ public class Server
             errorCode = 0;
         }
         
-        // Initialize opcode, error cods, and zero bytes
+        // Initialise opcode, error cods, and zero bytes
         errorDataBytes[0] = 0;
         errorDataBytes[1] = 5;
         errorDataBytes[2] = 0;
         errorDataBytes[3] = (byte) errorCode;
         errorDataBytes[4 + errorMessageString.length()] = 0;
-        // Initialize error error message
+        // Initialise error error message
         for(int i = 0; i < errorMessageString.length(); i++)
         {
             errorDataBytes[i + 4] = errorMessageBytes[i];
