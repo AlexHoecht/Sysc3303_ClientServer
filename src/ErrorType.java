@@ -1,3 +1,4 @@
+
 /*
  * An enumerated type to store different types of errors that the error generator can generate.
  */
@@ -9,27 +10,26 @@ public enum ErrorType
 {
 	// I3 ERRORS
 	ERROR0("No Error"),
-	ERROR1("Lose packet going to Server"), 
-	ERROR2("Lose packet going to Client"), 
-	ERROR3("Delay packet going to Server"), 
-	ERROR4("Delay packet going to Client"), 
-	ERROR5("Duplicate packet going to Server"), 
-	ERROR6("Duplicate packet going to Client"), 
+	ERROR1("Lose packet going to Server"), //
+	ERROR2("Lose packet going to Client"), //
+	ERROR3("Delay packet going to Server"), //
+	ERROR4("Delay packet going to Client"), //
+	ERROR5("Duplicate packet going to Server"),// 
+	ERROR6("Duplicate packet going to Client"), //
 	   
 	// WRONG BLOCK NUMBER
-	ERROR8("Send Data to Server with wrong block # Write"),  // set so only happens after 0th packet
-	ERROR9("Send Ack to Server with wrong block # Read"), 
-	ERROR10("Send Data to Client with wrong block # Write"), 
-	ERROR11("Send Ack to Client with wrong block # Read"), 
+	
+	 ERROR7("Send to Server with wrong block #"), //
+	 ERROR8("Send to Client with wrong block #"), // 
 	
 	// INITIAL CLIENT REQUEST ERRORS
-	ERROR12("Send Request to server without filname"), 
-	ERROR13("Send Request to server without mode"), 
-	ERROR14("Send Request to server with invalid mode"), 
-	ERROR15("Ack sent to Server port 69"),// can happen whenever
-	ERROR16("Data sent to Server port 69"),// can happen whenever
-	ERROR17("Error sent to Server port 69"), // can happen whenever
-	ERROR18("Send Request to server with more than 3 '0' bytes"), 
+	ERROR9("Send Request to server without filname"), //
+	ERROR10("Send Request to server without mode"), //
+	ERROR11("Send Request to server with invalid mode"), //
+	ERROR12("Ack sent to Server port 69"),// can happen whenever
+	ERROR13("Data sent to Server port 69"),// can happen whenever
+	ERROR14("Error sent to Server port 69"), // can happen whenever
+	ERROR15("Send Request to server with more than 3 '0' bytes"), 
 	
 	
 	// Wrong expected packets
@@ -44,8 +44,8 @@ public enum ErrorType
 	ERROR25("Send Data less than 4 bytes long to Client Read"),
 	ERROR26("Send Ack less than 4 bytes long to Client WRite"),
 	
-	ERROR27("Send to server from wrong port"), //
-	ERROR28("Send to Client from wrong port"), //
+	ERROR27("Send to server from wrong port"), 
+	ERROR28("Send to Client from wrong port"), 
 	
 	ERROR29("Send Data with more than 516 length"),
 	ERROR30("Seend invalid ERROR packet");
