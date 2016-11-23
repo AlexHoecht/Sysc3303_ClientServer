@@ -427,6 +427,7 @@ public class Client
 	 */
 	public void appendToFile(File f, byte[] byteData)
 	{
+		if (receivePacket.getData()[4] != 0x00)
 		try
 		{
 			// Properly formatting data to be written
