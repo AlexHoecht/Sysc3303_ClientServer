@@ -46,15 +46,35 @@ K. Sollins. (1992, July). The TFTP Protocol (Revision 2). MIT. Cambridge, Massac
 ### Instructions for Transferring Files
 If at any time an unexpected error occurs in any class, terminate all processes and restart from step 1.
 
-1. Run class Server
-2. Run class ErrorSimulator, if applicable
-3. Specify the error to be simulated via the console, if applicable
-4. Run class Client
-5. Directories "Server Directory" and "Client Directory" will be created in the project folder if they do not already exist
-6. Move desired files into the directories dending on whether a read from or write to the server is desired
-7. Follow directions and prompts from the client via GUI popups
-8. File transfer will begin after the user has selected the transfer type (read or write)
-9. Wait for files to be transferred (approx 1MB/min)
-10. A copy of the transferred file will now exist in either the server or client directory depending on if a read or write was performed
-11. Transfer any number more files via GUI popups
-12. Shut down the client and server via GUI popups
+1. Open the project folder in a Java IDE.
+2. Compile and run Server.java.
+  1. A directory "Server Directory" will be created for the server in the project folder if it does not already exist.
+  2. The user will be prompted via GUI popup to terminate the server.
+3. Compile and run class ErrorSimulator.java, if applicable.
+  1 The user will be prompted via the console to choose an error to be generated.
+4. Compile and run class Client.java.
+  1. The user will be prompted via GUI popup for client information.
+    1. Desired directory
+      1. A directory "Client Directory" will be created for the client in the project folder if it does not already exist. 
+    2. Simulation mode (test/normal). Choose test mode if the user wishes to use the error simulator.
+    3. Output type (quiet/verbose)
+    4. File name.
+      1. If performing a write, make sure the file already exists within the client's directory
+    5. Request type (read/write)
+5. File transfer will begin after the user has selected the transfer type (read or write).
+6. Wait for the file data to be transferred (approx 1MB/min).
+7. A copy of the transferred file will now exist in either the server or client directory depending on if a read or write was performed.
+8. The user will be prompted via GUI after each successful transfer if they would like to transfer another file.
+9. Shut down the client and server via GUI popups.
+
+### Iteration Responsibilities
+- Connor Emery
+  - Client error handling.
+- Robert Graham
+  - Read me file, error handling theory.
+- Alex Hoecht
+  - Client, server, and sub server error handling.
+- Saleem Karkabi
+  - Client, server, and sub server error handling. Error simulator error generation.
+- Andrew Ward
+  - Error simulator error generation.
