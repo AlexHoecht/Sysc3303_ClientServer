@@ -44,6 +44,8 @@ K. Sollins. (1992, July). The TFTP Protocol (Revision 2). MIT. Cambridge, Massac
 - .classpath
 
 ### Instructions for Transferring Files
+If at any time an unexpected error occurs in any class, terminate all processes and restart from step 1.
+
 1. Run class Server
 2. Run class ErrorSimulator, if applicable
 3. Specify the error to be simulated via the console, if applicable
