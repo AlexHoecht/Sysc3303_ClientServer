@@ -69,12 +69,12 @@ If at any time an unexpected error occurs in any class, terminate all processes 
 
 ### Iteration Responsibilities
 - Connor Emery
-  - Client error handling.
+  - Client error handling, error simulator debugging.
 - Robert Graham
-  - Read me file, error handling theory.
+  - Read me file, client error handling, error simulator debugging.
 - Alex Hoecht
-  - Client, server, and sub server error handling.
+  - Client, server, and sub server error handling. Error simulator debugging
 - Saleem Karkabi
-  - Client, server, and sub server error handling. Error simulator error generation.
+  - Client, server, and sub server error handling. Error simulator error generation and debugging.
 - Andrew Ward
-  - Error simulator error generation.
+  - Error simulator error generation and debugging.
