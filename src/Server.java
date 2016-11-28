@@ -62,6 +62,12 @@ public class Server
 			se.printStackTrace();
 			System.exit(1);
 		}
+		try {
+			socket.setSoTimeout(150);
+		} catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		directory = new File(DIRECTORY_NAME);
 		// Create the directory if it doesn't already exist
@@ -96,7 +102,7 @@ public class Server
 		
 		Thread serverKiller = new Thread(new ServerKiller(this));
 		serverKiller.start();
-		
+		boolean timeout = false;
 		while(!killServer)
 		{
 			// Byte arrays created to pack and unpacked data
@@ -105,8 +111,10 @@ public class Server
 			
 			// That packet that will receive the Packet from the Client
 			receivePacket = new DatagramPacket(msg, msg.length);
-			System.out.println("Waiting for a packet...\n");
-			
+			if (!timeout){
+				System.out.println("Waiting for a packet...\n");
+			}
+			timeout = false;
 			try
 			{
 				// Receive the packet
@@ -114,10 +122,10 @@ public class Server
 			}
 			catch(IOException e)
 			{
-				System.out.println("Error\n" + e);
-				e.printStackTrace();
-				System.exit(1);
+				timeout = true;
+				continue;
 			}
+			
 		
 			System.out.println("Packet received\n");
 			
