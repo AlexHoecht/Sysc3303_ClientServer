@@ -16,7 +16,7 @@ import java.util.Arrays;
  * @author Robert Graham    100981086
  * @author Saleem Karkabi   100944655 
  */
-public class Server 
+public class Server  
 {
 	// Server's well known port
 	private static final int PORT = 69;
@@ -100,7 +100,7 @@ public class Server
 		while(!killServer)
 		{
 			// Byte arrays created to pack and unpacked data
-			byte[] msg = new byte[516];
+			byte[] msg = new byte[517];
 			byte[] data = new byte[4];
 			
 			// That packet that will receive the Packet from the Client
@@ -185,12 +185,11 @@ public class Server
 				
 				String fileName = new String(file);
 				
-				if(receivePacket.getPort() != initialPort){
 					t = new Thread (new SubServer(receivePacket.getPort(), receivePacket.getData(), fileName, data, directory, directoryPath));
 					t.start();
 					initialPort = receivePacket.getPort();
 					hasThreadStarted = true;
-				}
+			
 			
 				// Output received packet information
 				

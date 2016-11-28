@@ -5,7 +5,7 @@ import java.util.Arrays;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-public class SubServer implements Runnable {
+public class SubServer implements Runnable { 
 	
 //////////////////////////////////////////////////
 	private static String filePath;
@@ -15,15 +15,15 @@ public class SubServer implements Runnable {
 	
 	// Datagrams to be used in the SubServer
 	private DatagramSocket subServerSocket;
-	private DatagramPacket receivePacket, sendPacket;
+	private DatagramPacket receivePacket, sendPacket, tempReceive;
 	
 	// Size of the Packet being sent back to the client
 	byte[] sendPacketSize;
 	byte[] receivePacketSize;
 	
 	// Byte arrays to store the data being sent and received
-	private byte[] data = new byte[516];
-	private byte[] ack = new byte[4];
+	private byte[] data = new byte[517];
+	private byte[] ack = new byte[517];
 	private byte[] opNum = new byte[4];
 	
 	// Integer representation of the packet number
@@ -81,14 +81,14 @@ public class SubServer implements Runnable {
 		// If we received a Read request, we will send DATA packets and receive ACK packets
 		if(requestOp[1] == 3)
 		{
-			sendPacketSize = new byte[516];
-			receivePacketSize = new byte[4];
+			sendPacketSize = new byte[517];
+			receivePacketSize = new byte[517];
 		}
 		// If we received a Write request, we will send ACK packets and receive DATA packets
 		else
 		{
-			sendPacketSize = new byte[4];
-			receivePacketSize = new byte[516];
+			sendPacketSize = new byte[517];
+			receivePacketSize = new byte[517];
 		}
 		
 		// Creating Datagram Packets!
@@ -118,6 +118,7 @@ public class SubServer implements Runnable {
 	public void run() 
 	{	
 		// If write request
+		System.out.println("HI");
 		if (data[1] == 2)
 		{
 			// File creation
@@ -182,11 +183,13 @@ public class SubServer implements Runnable {
     			// Create if the file doesn't already exist
     			receivedFile.createNewFile();
     			fileAdded = true;
+    			
     		} 
     		catch (IOException e) 
     		{
     			e.printStackTrace();
     			System.exit(1);
+    			
     		}
     		
     		// If the file was successfully addes
@@ -201,7 +204,8 @@ public class SubServer implements Runnable {
     	{
     		//JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
     		System.out.println("File already exists sending error");
-    		sendPacket.setData(createErrorPacket(new byte[] {0, 5, 0, 6}));
+    		sendPacket.setData(new byte[] {0, 5, 0, 6});
+    		System.out.println("THIS IS IT!! " +  Arrays.toString(sendPacket.getData()) + "\n");
     		errorOut = true;
     		try 
     		{
@@ -272,13 +276,10 @@ public class SubServer implements Runnable {
 		// File does not exist ERROR
 		if(!tempFile.isFile())
 	    {
-	        sendPacket.setData(createErrorPacket(new byte[] {0, 5, 0, 1}));
-
-	        JOptionPane.showMessageDialog(popupWindow, "ERROR: \n" + "File does not exist!");
-	        
-        	subServerSocket.send(sendPacket);
-	        
-	        return;
+			sendPacket.setData(new byte[] {0, 5, 0, 1});
+			subServerSocket.send(sendPacket);
+			JOptionPane.showMessageDialog(popupWindow, "ERROR: File does not exist! \n" + "Please create and try again.");
+            return;
 	    }
 		
 		// File cannot be read ERROR
@@ -286,7 +287,7 @@ public class SubServer implements Runnable {
 	    {
 			JOptionPane.showMessageDialog(popupWindow, "ERROR: \n" + "File cannot be read.");
 			
-	        sendPacket.setData(createErrorPacket(new byte[] {0, 5, 0, 2}));
+	        sendPacket.setData((new byte[] {0, 5, 0, 2}));
 	        subServerSocket.send(sendPacket);
 	        
 	        return;
@@ -455,7 +456,7 @@ public class SubServer implements Runnable {
 		receive();
 		
 		// While the data is 512 bytes
-		while(receivePacket.getData()[515] != (byte) 0 && !Thread.interrupted())
+		while((receivePacket.getData()[515] != (byte) 0 || (receivePacket.getData()[1] == 5 && packetCounter != 0))  && !Thread.interrupted() )
 		{
 			// If there is not enough usable space in directory
 			if(serverDir.getUsableSpace() < 512)
@@ -472,8 +473,11 @@ public class SubServer implements Runnable {
 			System.out.println("data packet has been writen to file");
 			
 			// Wait to receive another packet
-			if (receivePacket.getData()[515] != 0)
-			receive();
+			if (receivePacket.getData()[515] != 0 || (receivePacket.getData()[1] == 5 && packetCounter != 0)){
+				if((receivePacket.getData()[3] != 5 && receivePacket.getData()[3] < 7) || receivePacket.getData()[515] != 0){
+					receive();
+				}
+			}
 			
 		}
 		
@@ -529,6 +533,7 @@ public class SubServer implements Runnable {
 	 */
 	public void sendAck (byte[] code)
 	{
+		tempReceive = sendPacket;
 		code[1] = 4;
 		sendPacket.setData(code);
 		System.out.println("Server sent ACK packet");
@@ -546,6 +551,7 @@ public class SubServer implements Runnable {
 		try 
 		{
 			subServerSocket.send(sendPacket);
+			System.out.println("NOW HERE\n");
 		} 
 		catch (IOException e) 
 		{
@@ -560,6 +566,7 @@ public class SubServer implements Runnable {
 	public void sendPacket(){
 		try {
 			System.out.println("Receive packet port: " + receivePacket.getPort());
+			tempReceive = receivePacket;
 			subServerSocket.send(sendPacket);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -579,13 +586,20 @@ public class SubServer implements Runnable {
 			receivePacket.setData(re(receivePacket.getData()));
 			try 
 			{
+
 				subServerSocket.receive(receivePacket);
+                
 				byte[] spd = sendPacket.getData();
 				byte[] rpd = receivePacket.getData();
 				byte a = spd[3];
 				a +=1;
 				byte b = spd[2];
 				b +=1;
+				
+				if (!checkSource(rpd)){
+					System.out.println("ERROR detected and handled");
+					continue;
+				}
 				System.out.println("Sent packet " + Arrays.toString(spd));
 				System.out.println("Receive packet " + Arrays.toString(rpd));
 				// Receive data (Write to server)
@@ -604,10 +618,44 @@ public class SubServer implements Runnable {
 				 	return;
 				}
 				// Error
-				else if (spd[1] == 5)
+				else if (rpd[1] == 5)
 				{
-					System.out.println("We have received an error");
-					return;
+					byte[] errorMsg = new byte[rpd.length-4];
+					System.arraycopy(rpd, 4, errorMsg, 0, errorMsg.length);
+					if(packetCounter == 0 && rpd[1] == 3){
+						System.out.println("We have received an error");
+						//return;
+					}else if(rpd[3] == 1){
+						System.out.println("\nFile transfer has already begun file must exist\n");
+						return;
+					}else if(rpd[3] == 2){
+						System.out.println("\nFile transfer has already begun can not be an access violation\n");
+						return;
+					}else if(rpd[3] == 6){
+						System.out.println("\nFile transfer has already begun file must have been created at begining of transfer\n");
+						return;
+					}else if(rpd[3] == 3){
+						System.out.println("\nThis is an impossible error, the server does not care if the client is full during a write\n");
+						return;
+					}else if(rpd[3] == 4){
+							System.out.print("\nIllegal TFTP Operation error received, error messages is " + new String(errorMsg));
+							sendPacket();
+							return;
+					}else if(rpd[3] == 5){
+							System.out.println("\nClient received packet from wrong port shutting down server\n");
+							System.exit(1);
+							
+					}else if(rpd[3] > 7){
+						System.out.print("\nThis Error does not exist [");
+						for(int p = 0; p < 4; p++){
+							System.out.print(rpd[p]);
+						}
+						System.out.println("]\n");
+						return;
+					}else{
+					
+						return;
+					}
 				}
 				else
 				{
@@ -715,6 +763,66 @@ public class SubServer implements Runnable {
 	    System.arraycopy(zero, 0, data, opcode.length + errorCode.length + errMsgByt.length, zero.length);
 	    
 	    return data;
+	}
+    
+    private boolean checkSource(byte[] pack){
+    	boolean valid ;
+    	if(!(pack[1] == 1 || pack[1] == 2)){
+       	 	if(pack[516] != 0x00){
+       	 		System.out.println("\nInvalid TFTP Operation, Packet was too large\n" );
+       	 		sendError("Invalid Port Number", 4);
+       	 		pack[516] = 0x00;
+       	 		valid = false;
+       	 		return valid;
+       	 	}
+       	}
+    	if(pack[0] != 0){
+    		System.out.println("\nInvalid op code, First Byte not 0\n");
+    		valid = false;
+    		sendError("Invalid op code, First Byte not 0", 4);
+    	}else if(!(pack[1] == 3 || pack[1] == 4 || pack[1] == 5)){
+    		System.out.println("\nInvalid op code, Packet is not Data Ack or Error");
+    		valid = false;
+    		sendError("Invalid op code, Packet is not Data Ack or Error 0", 4);
+    	}else if(errorPort != receivePacket.getPort()){
+    		System.out.println("\nInvalid Port Number, Sending Error to sender\n" );
+    		sendError("Invalid Port Number", 5);
+    		valid = false;
+    	}
+
+    	else{
+    		valid = true;
+    		System.out.println("\nValid Packet");
+    	}
+    	
+    	return valid;
+    }
+    
+    public void sendError(String message, int code){
+    	
+    	byte [] errorMes = new byte[4 + message.length()];
+		errorMes[1] = 5;
+		errorMes[3] = (byte) code;
+		System.arraycopy(message.getBytes(), 0, errorMes, 4, message.length());
+		DatagramPacket sE = null;
+		try {
+			sE = new DatagramPacket(errorMes, errorMes.length, InetAddress.getLocalHost(), receivePacket.getPort());
+		} catch (UnknownHostException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		for(int p = 0; p < 4; p++){
+			System.out.println(sE.getData()[p]);
+		}
+		
+	    System.out.println(sE.getPort());
+		System.out.println( "Sending "+ message + " Error");
+		try {
+			subServerSocket.send(sE);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}			
 	}
     
     private boolean writeOnly(File file)

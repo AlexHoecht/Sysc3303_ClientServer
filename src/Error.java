@@ -1,4 +1,3 @@
-
 /**
  * Used to keep track of an error type, and a packet to generate the error on
  * @author Andrew

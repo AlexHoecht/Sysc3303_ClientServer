@@ -26,10 +26,10 @@ import java.util.concurrent.TimeUnit;
 public class ErrorSimulator 
 {
 
-	private DatagramPacket sendPacket, receivePacket , delayedPacket;
+	private DatagramPacket sendPacket, receivePacket , delayedPacket, errorPacket, wrongPortPacket, tempPacket;
 	private int clientPort, serverPort; // client, server ports
 	private InetAddress clientIP, serverIP; // variables to store the addresses
-	private DatagramSocket receiveSocket, clientSocket, serverSocket; // DatagramSockets
+	private DatagramSocket receiveSocket, clientSocket, serverSocket, randomSocket; // DatagramSockets
 	private boolean serverWait; // used to track which socket to wait at
 	private int currentPacketNumber; // used to count the packet number
 	private String inputStringError; // used for ERROR input from user
@@ -37,6 +37,10 @@ public class ErrorSimulator
 	private int counter; // Used in the Lost packet to client (breaks lost packet loop)
 	private int servercounter; // used in the Lost packet to server (breaks lost packet loop)
 	private int delayTime;
+	private boolean serverLock = false;
+	private boolean goingServer = false;
+	private int errorNumberServer;
+	private int errorNumberClient;
 	
 	private int delayPacketcounter;
 	
@@ -76,6 +80,7 @@ public class ErrorSimulator
 			receiveSocket = new DatagramSocket(23); // construct DatagramSocket and bind to port 23
 			serverSocket = new DatagramSocket(); // construct server DatagramSocket
 			clientSocket = new DatagramSocket(); // construct Client DatagramSocket
+			randomSocket = new DatagramSocket(1025);
 			serverIP = InetAddress.getLocalHost();
 		}
 		catch(SocketException e)
@@ -101,17 +106,6 @@ public class ErrorSimulator
 	 * 	- Processes the packet and prints the relevant data about it
 	 * 	- Repacks the data back into a packet to be sent to the Client
 	 * 
-	 * Generates the following Errors:
-	 * EEROR0: No error regular WRQ/RRQ
-	 * ERROR1: Lose packet going to Server
-	 * ERROR2: Lose packet going to Client
-	 * ERROR3: Delay packet going to Server
-	 * ERROR4: Delay packet going to Client
-	 * ERROR5: Duplicate packet going to Server
-	 * ERRPR6: Duplicate packet going to Client
-	 * ERROR8: Send Data packet to Server with wrong block#
-	 * 
-	 * change ENUM in main to test different errors. // need to add UI to choose ERROR
 	 */
 	public void ErrorSimulatorAlgorithm()
 	{
@@ -129,25 +123,45 @@ public class ErrorSimulator
 		///////////////////////////////////////////////////////////////////////////////////////////////////////			
 			
 		boolean error = true;
-		Scanner in = new Scanner(System.in);
 		BufferedReader bufferReadError = new BufferedReader(new InputStreamReader(System.in));
 		while(error)
 		{
-			System.out.println("\nGenerates the following errors\n");
-			System.out.println("\nNOERROR: No error regular WRQ/RRQ\n");
-			System.out.println("\nERROR1: Lose packet going to Server\n");
-			System.out.println("\nERROR2: Lose packet going to Client\n");
-			System.out.println("\nERROR3: Delay packet going to Server\n");
-			System.out.println("\nERROR4: Delay packet going to Client\n");
-			System.out.println("\nERROR5: Duplicate packet going to Server\n");
-			System.out.println("\nERROR6: Duplicate packet going to Client\n");
-			System.out.println("\nERROR7: Send to Server with wrong block# \n");
-			System.out.println("\nERROR8: Send to Client with wrong block# \n");
-			System.out.println("\nERROR9: Send to Server without filename\n");
+			System.out.println("\nGenerates the following errors:");
+			System.out.println("NOERROR: No error regular WRQ/RRQ");
+			System.out.println("ERROR1: Lose packet going to Server");
+			System.out.println("ERROR2: Lose packet going to Client");
+			System.out.println("ERROR3: Delay packet going to Server");
+			System.out.println("ERROR4: Delay packet going to Client");
+			System.out.println("ERROR5: Duplicate packet going to Server");
+			System.out.println("ERROR6: Duplicate packet going to Client");
+			System.out.println("ERROR7: Send to Server with wrong block#");
+			System.out.println("ERROR8: Send to Client with wrong block# ");
+			System.out.println("ERROR9: Send to Server without filename");
 			System.out.println("ERROR10: Send Request to server without mode");
 			System.out.println("ERROR11: Send Request to server with invalid mode");
+			System.out.println("ERROR12: Send Random Ack to Server");
+			System.out.println("ERROR13: Send Random Data to Server");
+			System.out.println("ERROR14: Send Random Ack to Client");
+			System.out.println("ERROR15: Send Random Data to Client");
+			System.out.println("ERROR16: Send Error Packet to Server");
+			System.out.println("ERROR17: Send Error Packet to Client");
+			System.out.println("ERROR18: Send Packet with less than 4 bytes long to Server");
+			System.out.println("ERROR19: Send Packet with less than 4 bytes long to Client");
+			System.out.println("ERROR20: Send data less than 4 bytes to Server");
+			System.out.println("ERROR21: Send data less than 4 bytes to Client");
+			System.out.println("ERROR22: Send ack less than 4 bytes to Server");
+			System.out.println("ERROR23: Send ack less than 4 bytes to Client");
+			System.out.println("ERROR24: Send to Server from wrong port");
+			System.out.println("ERROR25: Send to Client from wrong port");
+			System.out.println("ERROR26: Send Data with more than 516 length to Server");
+			System.out.println("ERROR27: Send Data with more than 516 length to Client");
+			System.out.println("ERROR28: Send invalid Error Packet to Server");
+			System.out.println("ERROR29: Send invalid Error Packet to Client");
+			
 
 			System.out.println("\nWhat error would you like to test\n");
+			
+			Scanner in = new Scanner(System.in);
 			try
 			{
 				inputStringError = bufferReadError.readLine();
@@ -170,6 +184,7 @@ public class ErrorSimulator
 				int i = in.nextInt();
 				errorTest = new Error(ErrorType.ERROR1, i);
 				error = false;
+				goingServer = true;
 			}
 			else if(inputStringError.equals("ERROR2"))
 			{
@@ -185,6 +200,7 @@ public class ErrorSimulator
 				System.out.println("\nHow long would you like to delay the packet for? (MILLISECONDS) \n");
 				delayTime = in.nextInt();
 				errorTest = new Error(ErrorType.ERROR3, i);
+				goingServer = true;
 				error = false;
 			}
 			else if(inputStringError.equals("ERROR4"))
@@ -201,6 +217,7 @@ public class ErrorSimulator
 				System.out.println("\nWhat Packet Number would you like to Duplicate a Packet to the Server on?\n");
 				int i = in.nextInt();
 				errorTest = new Error(ErrorType.ERROR5, i);
+				goingServer = true;
 				error = false;
 			}
 			else if(inputStringError.equals("ERROR6"))
@@ -227,6 +244,7 @@ public class ErrorSimulator
 					{
 						errorTest = new Error(ErrorType.ERROR7, i);
 						error = false;
+						goingServer = true;
 						isizero = false;
 					}
 				}
@@ -268,6 +286,207 @@ public class ErrorSimulator
 				errorTest = new Error(ErrorType.ERROR11, 0);
 				error = false;
 			}
+			else if(inputStringError.equals("ERROR12"))
+			{
+				System.out.println("\nWhat Packet number to send random Ack to Server ");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR12,i);
+				goingServer = true;
+				error=false;
+			}
+			else if(inputStringError.equals("ERROR13"))
+			{
+				System.out.println("\nWhat Packet number to send random Data to Server ");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR13,i);
+				goingServer = true;
+				error=false;
+			}
+			else if(inputStringError.equals("ERROR14"))
+			{
+				boolean isizero = true;
+				while(isizero)
+				{
+					System.out.println("\nWhat Packet Number would you like to Send random Ack to Client?\n");
+					int i = in.nextInt();
+					if(i == 0)
+					{
+						System.out.println("\n0 is an invalid packetnumber for this error\n");
+					}
+					else
+					{
+						errorTest = new Error(ErrorType.ERROR14, i);
+						error = false;
+						isizero = false;
+					}
+				}
+			}
+			else if(inputStringError.equals("ERROR15"))
+			{
+				boolean isizero = true;
+				while(isizero)
+				{
+					System.out.println("\nWhat Packet Number would you like to Send random Data to Client?\n");
+					int i = in.nextInt();
+					if(i == 0)
+					{
+						System.out.println("\n0 is an invalid packetnumber for this error\n");
+					}
+					else
+					{
+						errorTest = new Error(ErrorType.ERROR15, i);
+						error = false;
+						isizero = false;
+					}
+				}
+			}
+			else if(inputStringError.equals("ERROR16"))
+			{
+				System.out.println("\nWhat Packet would you like to send ErrorPacket to Server on? ");
+				int i = in.nextInt();
+				
+				errorTest = new Error(ErrorType.ERROR16,i);
+				goingServer = true;
+				error=false;
+				
+				boolean errorPacketloop = true;
+				while(errorPacketloop)
+				{
+					System.out.println("\nWhat Error Number would you like to send? ");
+					errorNumberServer = in.nextInt();
+				
+					if(errorNumberServer > 7 || errorNumberServer < 0)
+					{
+						System.out.println("\n Invalid Error Number");
+					}
+					else
+					{
+						errorPacketloop = false;
+					}
+				}
+				
+			}
+			else if(inputStringError.equals("ERROR17"))
+			{
+				System.out.println("\nWhat Packet would you like to send ErrorPacket to Client on? ");
+				int i = in.nextInt();
+				
+				errorTest = new Error(ErrorType.ERROR17,i);
+				error=false;
+				
+				boolean errorPacketloop = true;
+				while(errorPacketloop)
+				{
+					System.out.println("\nWhat Error Number would you like to send? ");
+					errorNumberClient = in.nextInt();
+				
+					if(errorNumberClient > 7 || errorNumberClient < 0)
+					{
+						System.out.println("\n Invalid Error Number");
+					}
+					else
+					{
+						errorPacketloop = false;
+					}
+				}
+				
+			}
+			else if(inputStringError.equals("ERROR18"))
+			{
+				System.out.println("\nWhat Packet Number would you like to send Packet with less than 4 bytes to Server?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR18, i);
+				error = false;
+				goingServer = true;
+			}
+			else if(inputStringError.equals("ERROR19"))
+			{
+				System.out.println("\nWhat Packet Number would you like to send Packet with less than 4 bytes to Client?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR19, i);
+				error = false;
+			}
+			else if(inputStringError.equals("ERROR20"))
+			{
+				System.out.println("\nWhat Packet Number would you like to send data with less than 4 bytes to Server?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR20, i);
+				error = false;
+				goingServer = true;
+			}
+			else if(inputStringError.equals("ERROR21"))
+			{
+				System.out.println("\nWhat Packet Number would you like to send data with less than 4 bytes to Server?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR21, i);
+				error = false;
+			}
+			else if(inputStringError.equals("ERROR22"))
+			{
+				System.out.println("\nWhat Packet Number would you like to send Ack with less than 4 bytes to Server?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR22, i);
+				error = false;
+				goingServer = true;
+			}
+			else if(inputStringError.equals("ERROR23"))
+			{
+				System.out.println("\nWhat Packet Number would you like to send Ack with less than 4 bytes to Client?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR23, i);
+				error = false;
+		
+			}
+			else if(inputStringError.equals("ERROR24"))
+			{
+				System.out.println("\nWhat Packet Number would you like to send Server with wrong Port?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR24, i);
+				error = false;
+				goingServer = true;
+		
+			}
+			else if(inputStringError.equals("ERROR25"))
+			{
+				System.out.println("\nWhat Packet Number would you like to send Server with wrong Port?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR25, i);
+				error = false;
+		
+			}
+			else if(inputStringError.equals("ERROR26"))
+			{
+				System.out.println("\nWhat Packet to Send Data with more than 516 length to Server (Write)?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR26, i);
+				error = false;
+				goingServer = true;
+		
+			}
+			else if(inputStringError.equals("ERROR27"))
+			{
+				System.out.println("\nWhat packet to Send Data with more than 516 length to Client (Read)?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR27, i);
+				error = false;
+			}
+			else if(inputStringError.equals("ERROR28"))
+			{
+				System.out.println("\nWhat packet to Send invalid ERROR packet to Server?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR28, i);
+				error = false;
+				goingServer = true;
+			}
+			else if(inputStringError.equals("ERROR29"))
+			{
+				System.out.println("\nWhat packet to Send invalid ERROR packet to Client?\n");
+				int i = in.nextInt();
+				errorTest = new Error(ErrorType.ERROR29, i);
+				error = false;
+				goingServer = true;
+			}
+			
 			else
 			{
 				System.out.println("/nInvalid Error Option/n");
@@ -285,6 +504,7 @@ public class ErrorSimulator
 		delayPacketcounter = 0;
 		receivePacket = new DatagramPacket(data, data.length);
 		delayedPacket = new DatagramPacket(data,data.length);
+		tempPacket = new DatagramPacket(data,data.length);
 		
 		while(transferloop)
 		{
@@ -305,8 +525,6 @@ public class ErrorSimulator
 		sendPacket = new DatagramPacket(data, receivePacket.getLength(), serverIP, 69);
 		
 		
-		
-		printSendingToServer(sendPacket); // print the packet being sent to the server
 		
 		try
 		{ 
@@ -366,11 +584,35 @@ public class ErrorSimulator
 				printSendingToServer(sendPacket);
 				break;
 			}
+			else if(errorTest.getErrorType() == ErrorType.ERROR12 && errorTest.getPacketNumber() == 0)
+			{
+				System.out.println("\n Sending Random Ack to server Port 69");
+				generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+				serverSocket.send(sendPacket);
+				printSendingToServer(sendPacket);
+				break;
+			}
+			else if(errorTest.getErrorType() == ErrorType.ERROR13 && errorTest.getPacketNumber() == 0)
+			{
+				System.out.println("\n Sending Random Data to server Port 69");
+				generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+				serverSocket.send(sendPacket);
+				printSendingToServer(sendPacket);
+				break;
+			}
+			else if(errorTest.getErrorType() == ErrorType.ERROR18 && errorTest.getPacketNumber() == currentPacketNumber)
+			{
+				System.out.println("\n Sending Packet to Server with less than 4 bytes");
+				generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+				serverSocket.send(sendPacket);
+				printSendingToServer(sendPacket);
+	
+			}
 			else
 			{
+				printSendingToServer(sendPacket);
 				serverSocket.send(sendPacket); // otherwise continue with normal transfer to Server
 				transferloop = false;
-				System.out.println("NO HERE!!!\n");
 			}
 			
 		}
@@ -397,10 +639,11 @@ public class ErrorSimulator
 		///////////////////////////////////////////////////////////////////////////////////////////////////////
 		///////////////////////////////////////////////////////////////////////////////////////////////////////
 		
-		
+		boolean lock = false;
 		//Loop forever to pass on packets keeping track of packet number 
 		for(currentPacketNumber = 1;; currentPacketNumber++)
 		{
+			
 			if(serverWait)
 			{
 				data = new byte[516];
@@ -423,7 +666,13 @@ public class ErrorSimulator
 				// create a new DatagramPacket to be sent to the client
 				sendPacket = new DatagramPacket(data, receivePacket.getLength(), clientIP, clientPort);
 				
-				printSendingToClient(sendPacket); // print the packet being sent to client
+				if(sendPacket.getData()[1] == 4 && !lock && !goingServer){
+					currentPacketNumber--;
+					lock = true;
+					
+				}
+				
+				
 				
 				try
 				{
@@ -469,10 +718,110 @@ public class ErrorSimulator
 						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
 						clientSocket.send(sendPacket);
 						printSendingToClient(sendPacket);
+						serverWait = false;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR14 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Random Ack to Client");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						clientSocket.send(sendPacket);
+						printSendingToClient(sendPacket);
+						serverWait = false;
+						
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR15 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Random Ack to Client");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						clientSocket.send(sendPacket);
+						printSendingToClient(sendPacket);
+						serverWait = false;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR17 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending ErrorPacket to Client");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						clientSocket.send(sendPacket);
+						printSendingToClient(sendPacket);
+						serverWait = false;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR19 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Packet to Client with less than 4 bytes");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						clientSocket.send(sendPacket);
+						printSendingToClient(sendPacket);
+						serverWait = false;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR21 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Data to Client with less than 4 bytes");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						clientSocket.send(sendPacket);
+						printSendingToClient(sendPacket);
+						serverWait = false;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR23 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Ack to Client with less than 4 bytes");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						clientSocket.send(sendPacket);
+						printSendingToClient(sendPacket);
+						serverWait = false;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR25 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending to Client from wrong port");
+						byte[] temp = new byte[516];
+						for (int i = 0; i < 516; i++){
+							temp[i] = sendPacket.getData()[i];
+						}
+						tempPacket.setData(temp);
+						tempPacket.setPort(sendPacket.getPort());
+						tempPacket.setAddress(sendPacket.getAddress());
+						
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						randomSocket.send(sendPacket);
+						printSendingToClient(sendPacket);
+						wrongPortPacket = new DatagramPacket(data, receivePacket.getLength(), clientIP, clientPort);
+						randomSocket.receive(wrongPortPacket);
+						System.out.println("Sending Error to imaginary source");
+						printReceivedFromClient(wrongPortPacket);
+						System.out.println("Now Sending from Correct Port");
+						
+						
+						clientSocket.send(tempPacket);
+						printSendingToClient(tempPacket);
+						serverWait = false;
+
+					}		
+					
+					else if(errorTest.getErrorType() == ErrorType.ERROR27 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending to Client datagram > 516");
+						byte[] big = new byte[517];
+						big[1] = sendPacket.getData()[1];
+						big[2] = sendPacket.getData()[2];
+						big[3] = sendPacket.getData()[3];
+						big[515] = sendPacket.getData()[515];
+						big[516] = 5;
+						DatagramPacket tooBig = new DatagramPacket(big, big.length, sendPacket.getAddress(),sendPacket.getPort());
+						clientSocket.send(tooBig);
+						printSendingToClient(tooBig);
+						serverWait = false;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR29 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending to Client invalid ERROR Packet");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						clientSocket.send(sendPacket);
+						printSendingToClient(sendPacket);
+						serverWait = false;
 					}
 					else // No errors detected transfer regularly
 					{
 							clientSocket.send(sendPacket);
+							printSendingToClient(sendPacket); // print the packet being sent to client
 							serverWait = false;
 					}
 					
@@ -480,7 +829,6 @@ public class ErrorSimulator
 					{
 						try
 						{
-							System.out.println("Hey man whats good");
 							clientSocket.receive(receivePacket); // receive a packet from the client
 							printReceivedFromClient(receivePacket);
 						}
@@ -490,6 +838,7 @@ public class ErrorSimulator
 							System.exit(1);
 						}
 						sendPacket = new DatagramPacket(data, receivePacket.getLength(), serverIP, serverPort);
+						
 						try
 						{
 							serverSocket.send(sendPacket); 
@@ -527,6 +876,7 @@ public class ErrorSimulator
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			
+			
 			if(!serverWait)
 			{
 				data = new byte[516];
@@ -544,10 +894,9 @@ public class ErrorSimulator
 					System.exit(1);
 				}
 				printReceivedFromClient(receivePacket); // print the packet received from client
-
-				
 				sendPacket = new DatagramPacket(data, receivePacket.getLength(), serverIP, serverPort);
-				printSendingToServer(sendPacket); // print the packet being sent to the server
+				
+				 
 				
 				try
 				{ 
@@ -592,11 +941,114 @@ public class ErrorSimulator
 						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
 						serverSocket.send(sendPacket);
 						printSendingToServer(sendPacket);
+						serverWait = true;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR12 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Random Ack to server Port 69");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						serverSocket.send(sendPacket);
+						printSendingToServer(sendPacket);
+						serverWait = true;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR13 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Random Data to server Port 69");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						serverSocket.send(sendPacket);
+						printSendingToServer(sendPacket);
+						serverWait = true;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR16 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending ErrorPacket to Server");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						serverSocket.send(sendPacket);
+						printSendingToServer(sendPacket);
+						serverWait = true;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR18 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Packet to Server with less than 4 bytes");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						serverSocket.send(sendPacket);
+						printSendingToServer(sendPacket);
+						serverWait = true;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR20 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Data to Server with less than 4 bytes");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						serverSocket.send(sendPacket);
+						printSendingToServer(sendPacket);
+						serverWait = true;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR22 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending Ack to Server with less than 4 bytes");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						serverSocket.send(sendPacket);
+						printSendingToServer(sendPacket);
+						serverWait = true;
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR24 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending to Server from wrong port");
+						byte[] temp = new byte[516];
+						for (int i = 0; i < 516; i++){
+							temp[i] = sendPacket.getData()[i];
+						}
+						tempPacket.setData(temp);
+						tempPacket.setPort(sendPacket.getPort());
+						tempPacket.setAddress(sendPacket.getAddress());
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						
+						randomSocket.send(sendPacket);
+						
+						printSendingToServer(sendPacket);
+						wrongPortPacket = new DatagramPacket(data, receivePacket.getLength(), serverIP, serverPort);
+						randomSocket.receive(wrongPortPacket);
+						System.out.println("Sending Error to imaginary Client");
+						printReceivedFromServer(wrongPortPacket);
+						
+						System.out.println("Now Sending from Correct Port");
+						serverWait = true;
+						serverSocket.send(tempPacket);
+						printSendingToServer(tempPacket);
+						
+						
+					}
+					else if(errorTest.getErrorType() == ErrorType.ERROR26 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending to Server datagram > 516");
+						
+						byte[] big = new byte[517];
+						big[1] = sendPacket.getData()[1];
+						big[2] = sendPacket.getData()[2];
+						big[3] = sendPacket.getData()[3];
+						big[515] = sendPacket.getData()[515];
+						big[516] = 5;
+						DatagramPacket tooBig = new DatagramPacket(big, big.length, sendPacket.getAddress(),sendPacket.getPort());
+						
+					
+						serverSocket.send(tooBig);
+						printSendingToServer(tooBig);
+						serverWait = true;
+						
+					}					
+					else if(errorTest.getErrorType() == ErrorType.ERROR28 && errorTest.getPacketNumber() == currentPacketNumber)
+					{
+						System.out.println("\n Sending to Server invalid ERROR packet");
+						generateErrorPacket(errorTest,sendPacket,sendPacket.getAddress());
+						serverSocket.send(sendPacket);
+						printSendingToServer(sendPacket);
+						serverWait = true;
 					}
 					else
 					{
 						serverSocket.send(sendPacket); // otherwise continue with normal transfer to Server
 						serverWait = true;
+						printSendingToServer(sendPacket); // print the packet being sent to the server
 					}
 					
 				}
@@ -605,13 +1057,12 @@ public class ErrorSimulator
 					e.printStackTrace();
 					System.exit(1);
 				}
-				if(sendPacket.getData()[515] == (byte) (0) && sendPacket.getData()[1] == 3)
+				if(sendPacket.getData()[1] == 3 && sendPacket.getData()[515] == (byte) (0)  )
 				{
 					
 					try
 					{
 						serverSocket.receive(receivePacket); // receive a packet from the server
-						System.out.println("WE HAVE HIT!!! ");
 						printReceivedFromServer(receivePacket);
 						System.out.println("");
 	                   
@@ -661,12 +1112,10 @@ public class ErrorSimulator
 	 */
 	private DatagramPacket generateErrorPacket(Error error, DatagramPacket OGPacket, InetAddress address)
 	{
-		DatagramPacket errorPacket;
 		
 		System.out.println("\n Generating Error case: " + error.getErrorType().toString() + "\n");
 		
 		byte[] data = new byte[516];
-		byte[] newdata = new byte[516];
 		
 		switch(error.getErrorType())
 		{
@@ -729,121 +1178,175 @@ public class ErrorSimulator
 			modePos = i + 1;
 			OGPacket.getData()[modePos++] = 7;
 			return OGPacket;
-		}
+		case ERROR12: // Send random Ack to server
+			OGPacket.setData(re(OGPacket.getData()));
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 4;
+			OGPacket.getData()[2]  = 0;
+			OGPacket.getData()[3]  = 4;
 			
+			return OGPacket;
+		case ERROR13: // Send random Data to server
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 3;
+			OGPacket.getData()[2]  = 0;
+			OGPacket.getData()[3]  = 7;
+			
+			for(i = 4; i<516;i++)
+			{
+				OGPacket.getData()[i]  = 7;
+			}
+			
+			return OGPacket;
+		case ERROR14: // Send Random Ack to CLient
+			OGPacket.setData(re(OGPacket.getData()));
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 4;
+			OGPacket.getData()[2]  = 0;
+			OGPacket.getData()[3]  = 7;
+			
+			
+			
+			return OGPacket;
+			
+		case ERROR15: // Send Random Data to Client
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 3;
+			OGPacket.getData()[2]  = 0;
+			OGPacket.getData()[3]  = 7;
+			
+			for(i = 4; i<516;i++)
+			{
+				OGPacket.getData()[i]  = 7;
+			}
+			
+			return OGPacket;
+			
+		case ERROR16: //Send Error Packet to Server
+			OGPacket.setData(re(OGPacket.getData()));
+			byte b = (byte)errorNumberServer;
+			
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 5;
+			OGPacket.getData()[2]  = 0; 
+			OGPacket.getData()[3]  = b;
+			
+			String errorMsg = "Error sent from Error Simulator";
+			byte[] errorByte = errorMsg.getBytes();
+			
+			for(int j = 5; j < errorByte.length; j++){
+				OGPacket.getData()[j] = errorByte[j];
+			}
+			
+			
+			
+			return OGPacket;
+			
+		case ERROR17: // Send Error Packet to Client
+			OGPacket.setData(re(OGPacket.getData()));
+			byte c = (byte)errorNumberClient;
+			
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 5;
+			OGPacket.getData()[2]  = 0; 
+			OGPacket.getData()[3]  = c;
+			
+			String errMsg = "Error sent from Error Simulator";
+			byte[] errByte = errMsg.getBytes();
+			
+			for(int j = 5; j < errByte.length; j++){
+				OGPacket.getData()[j] = errByte[j];
+			}
+			
+			
+			
+			
+			return OGPacket;
+			
+		case ERROR18: // Send Packet with less than 4 bytes Server
 
+			OGPacket.setLength(3);
+			
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 0;
+			OGPacket.getData()[2]  = 0; 
 
-		/**	
-		case ERROR15:// randomly send ACK
-			data[0] = 0;
-			data[1] = 4;
-			data[2] = 0;
-			data[3] = 0;
-			errorPacket = new DatagramPacket(data, 4, address, 69);
-			return errorPacket;
-		case ERROR16:// randomly send Data
-			data[0] = 0;
-			data[1] = 3;
-			data[2] = 0;
-			data[3] = 1;
-			errorPacket = new DatagramPacket(data, 4, address, 69);
-		case ERROR17:// randomly send ERROR
-			data[0] = 0;
-			data[1] = 5;
-			data[2] = 0;
-			data[3] = 4;
-			errorPacket = new DatagramPacket(data, 4, address, 69);
-		case ERROR18:
-			data[0] = 0;
-			data[1] = 0;
-			data[2] = 0;
-			errorPacket = new DatagramPacket(data, 3, address, 69);
-			
-			
-			/////////////////////////////////////////////////////////////////////////
-			//// Wrong expected packets
-			/////////////////////////////////////////////////////////////////////////
-		case ERROR19: // Send Ack to Server when it is expecting Data Write
-			data = new byte[4];
-			data[0] = 0;
-			data[1] = 4;
-			data[2] = 0;
-			data[3] = 1;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
-			
-		case ERROR21: // Send Ack to Client when it is expecting Data Read
-			data = new byte[4];
-			data[0] = 0;
-			data[1] = 4;
-			data[2] = 0;
-			data[3] = 1;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
-			
-		case ERROR20: // Send Data to Server when it is expecting Ack Read
-			data = new byte[4];
-			data[0] = 0;
-			data[1] = 3;
-			data[2] = 0;
-			data[3] = 1;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
-			
-		case ERROR22: // Send Data to Client when it is expecting Data Write
-			data[0] = 0;
-			data[1] = 4;
-			data[2] = 0;
-			data[3] = 1;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
+			return OGPacket;
 		
-			/////////////////////////////////////////////////////////////////////////
-			///// Send Data/Ack less than 4 bytes
-			/////////////////////////////////////////////////////////////////////////
+		case ERROR19: // Send Packet with less than 4 bytes to Client
+			OGPacket.setLength(3);
 			
-		case ERROR23: // Send data less than 4 bytes to Server Write
-			data = new byte[3];
-			data[0] = 0;
-			data[1] = 3;
-			data[2] = 0;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 0;
+			OGPacket.getData()[2]  = 0; 
+
+			return OGPacket;
 			
-		case ERROR25: // Send data less than 4 bytes to Client Read
-			data = new byte[3];
-			data[0] = 0;
-			data[1] = 3;
-			data[2] = 0;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
+		case ERROR20: // Send Data to Server with less than 4 bytes
+			OGPacket.setLength(3);
+			
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 3;
+			OGPacket.getData()[2]  = 0; 
+
+			return OGPacket;
+		case ERROR21: // Send Data to Server with less than 4 bytes
+			OGPacket.setLength(3);
+			
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 3;
+			OGPacket.getData()[2]  = 0; 
+
+			return OGPacket;
+			
+		case ERROR22:  // Send Ack to Server with less than 4 bytes
+			OGPacket.setLength(3);
+			
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 4;
+			OGPacket.getData()[2]  = 0; 
+
+			return OGPacket;
+		case ERROR23: // Send Ack to CLient with less than 4 bytes
+			
+			OGPacket.setLength(3);
+			
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 3;
+			OGPacket.getData()[2]  = 0; 
+
+			return OGPacket;
+			
+		case ERROR24: // Send to Server from wrong port
+		case ERROR25: // Send to Client from wrong port
+			return OGPacket;
+		
+			
+		case ERROR26:
+		case ERROR27: // Send Data with more than 516 length to Client
+			return OGPacket;
 			
 			
-		case ERROR24: // Send Ack less than 4 bytes to Server Read
-			data = new byte[3];
-			data[0] = 0;
-			data[1] = 4;
-			data[2] = 0;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
-		case ERROR26: // Send Ack less than 4 bytes to Client Write
-			data = new byte[3];
-			data[0] = 0;
-			data[1] = 4;
-			data[2] = 0;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
+		case ERROR28: // Send invalid ERROR packet to Server
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 5;
+			OGPacket.getData()[2]  = 0; 
+			OGPacket.getData()[3]  = 8;
+			return OGPacket;
 			
-			/////////////////////////////////////////////////////////////////////////
-			/////Wrong Port
-			/////////////////////////////////////////////////////////////////////////
+		case ERROR29: // Send invalid ERROR packet to Client
+			OGPacket.getData()[0]  = 0;
+			OGPacket.getData()[1]  = 5;
+			OGPacket.getData()[2]  = 0; 
+			OGPacket.getData()[3]  = 8;
+			return OGPacket;
+		case ERROR30:
 			
-		case ERROR27: // Send to Server from wrong port
-		case ERROR28: // Send to Client from wrong port
 			
-		case ERROR29: // Data with more than 516 length
-			return new DatagramPacket(OGPacket.getData(), 1000, address,OGPacket.getPort());
-		case ERROR30: // Send invalid ERROR packet
-			data = new byte[4];
-			data[0] = 0;
-			data[1] = 5;
-			data[2] = 0;
-			data[3] = 8;
-			return new DatagramPacket(data, data.length, address, OGPacket.getPort());
 			
-			**/	
+		}
+		
+		
 		return OGPacket;
 		
 	}
@@ -930,6 +1433,22 @@ public class ErrorSimulator
 	    	{
 	    		data[i] = 0x00;
 	    	}
+	    	return data;
+	    }
+	 
+	   public byte[] resize (byte[] data)
+	    {
+	    	int i;
+	    	for(i = 3; i < data.length; i++)
+	    	{
+	    		if(data[i] == 0x00)
+	    		{
+	    			break;
+	    			
+	    		}
+	    	}
+	    	
+	    	data = Arrays.copyOf(data, i);
 	    	return data;
 	    }
 

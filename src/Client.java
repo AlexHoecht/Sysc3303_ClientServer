@@ -167,8 +167,8 @@ public class Client
 				if(request == "read")
 				{
 					// If we give a Read request, we will send ACK packets and receive DATA packets
-					sendPacketSize = new byte[4];
-					receivePacketSize = new byte[516];
+					sendPacketSize = new byte[517];
+					receivePacketSize = new byte[517];
 					message[1] = 1;		// 01 is the opcode for read
 				}
 				
@@ -176,8 +176,8 @@ public class Client
 				else if(request == "write")
 				{
 					// If we give a Write request, we will send DATA packets and receive ACK packets
-				    sendPacketSize = new byte[516];
-					receivePacketSize = new byte[4];
+				    sendPacketSize = new byte[517];
+					receivePacketSize = new byte[517];
 					message[1] = 2;		// 02 is the opcode for write
 				}
 				
@@ -282,6 +282,7 @@ public class Client
 				// RECEIVING PACKETS!
 				// We initialize the DatagramPacket that we receive into
 				receivePacket = new DatagramPacket(receivePacketSize, receivePacketSize.length);
+				System.out.println(receivePacketSize);
 					
 				
 				receive();
@@ -335,6 +336,8 @@ public class Client
 				// If we have received a DATA packet
 				else if(receivePacket.getData()[1] == 0x03)
 				{
+					portNum = receivePacket.getPort();
+					sendPacket.setPort(portNum);
 					// Begin to receive data to read into a file
 					waitForData();
 				}
@@ -347,6 +350,7 @@ public class Client
 				}
 				break;
 			}
+			System.out.println(receivePacket.getData().length);
 			// Last step of the loop is to ask the user if they want to kill the client
 			int kill = JOptionPane.showConfirmDialog(popupWindow,"Would you like to continue?", "Kill Client", JOptionPane.YES_NO_OPTION);
 			if(kill != 0)
@@ -359,8 +363,10 @@ public class Client
 				allValidInputs = false;
 			}
 		//END OF LOOP!
+			
 		}
 	// END OF CLIENT ALGORITHM!!!!!!!!!!!!!!!!!!
+		
 	}
 
 
@@ -647,6 +653,7 @@ public class Client
 				receivePacket.setData(re(receivePacket.getData()));
 				
 				receive();
+				System.out.println("Leaving receive");
 				// End this transfer if Client times out
 				if(timeout)
 				{
@@ -696,7 +703,8 @@ public class Client
 		// ACK opcode = 04
 		code[1] = (byte) 4;
 		// We want to send to the SubServer thread
-		sendPacket.setPort(receivePacket.getPort());
+		portNum = receivePacket.getPort();
+		sendPacket.setPort(portNum);
 		sendPacket.setData(code);
 		
 		if(qORv == 1)
@@ -764,8 +772,15 @@ public class Client
 			{
 				sendReceiveSocket.receive(receivePacket);
 				// when the client is sending ACKS
+				if (sendPacket.getData()[1] ==  3 || sendPacket.getData()[1] == 4){
+				if (!checkSource()){
+					System.out.println("ERROR detected and handled");
+					continue;
+					
+				}
+				}
 				
-				if ((a == receivePacket.getData()[3]|| b == receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4){
+				if ((a == receivePacket.getData()[3]|| b == receivePacket.getData()[2] )&& sendPacket.getData()[1] == 4 && receivePacket.getData()[516] == 0){
 					System.out.println("We have received an Data Packet");
 					return;
 				} 
@@ -785,11 +800,137 @@ public class Client
 				}
 				
 				
-				// when the client is sending ERRORS
-				if (receivePacket.getData()[1] == 5 ) {
-					System.out.println("We have received an error packet");
-					return;
+				// If received an error
+				else if(receivePacket.getData()[1] == 5)
+				{
+					System.out.println("Error packet");
+					System.out.println(extractErrorData(receivePacket.getData()));
+					
+					// Right after a read request
+					if(sendPacket.getData()[1] == 1)
+					{
+						// Determine error code
+						switch(receivePacket.getData()[3])
+						{
+							case 1	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 2	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 3	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 4	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 5	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 6	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							default	:	System.out.println("Invalid error packet");
+										System.out.println("Resending last packet");
+										send(sendPacket);
+						}
+					}
+					
+					// Right after a write request
+					else if(sendPacket.getData()[1] == 2)
+					{
+						// Determine error code
+						switch(receivePacket.getData()[3])
+						{
+							case 1	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 2	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 3	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 4	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 5	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 6	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							default	:	System.out.println("Invalid error packet");
+										System.out.println("Resending last packet");
+										send(sendPacket);
+						}
+					}
+					
+					// Some time during a transfer while reading
+					else if(sendPacket.getData()[1] == 4)
+					{
+						// Determine error code
+						switch(receivePacket.getData()[3])
+						{
+							case 1	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 2	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 3	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 4	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 5	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 6	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							default	:	System.out.println("Invalid error packet");
+										System.out.println("Resending last packet");
+										send(sendPacket);
+						}
+					}
+					
+					// Some time during a transfer while writing
+					else
+					{
+						// Determine error code
+						switch(receivePacket.getData()[3])
+						{
+							case 1	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 2	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 3	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 4	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							case 5	:	haltCurrentTransfer = true;
+										System.out.println("Unrecoverable error, quitting");
+										break;
+							case 6	:	send(sendPacket);
+										System.out.println("Resending last packet");
+										break;
+							default	:	System.out.println("Invalid error packet");
+										System.out.println("Resending last packet");
+										send(sendPacket);
+						}
+					}
+					if(haltCurrentTransfer)
+					{
+						break;
+					}
 				}
+				
 				System.out.println(receivePacket.getData()[2] + " " + receivePacket.getData()[3] + " sent " + sendPacket.getData()[2] + " " + sendPacket.getData()[3]);
 				System.out.println("Last Packet received was not what was exected it was\n");
 				
@@ -797,13 +938,7 @@ public class Client
 		    	{
 		    		System.out.print(receivePacket.getData()[i] + ", ");
 		    	}
-				
-				/*if(receivePacket.getData()[1] == 3)
-				{
-					System.out.println("Resending ");
-					send(sendPacket);
-				}*/
-				
+
 			}
 			catch(IOException e)
 			{
@@ -816,12 +951,65 @@ public class Client
 			
 			
 		}
-		System.out.println("Client didn't get a response and has now made 5 attempts. Client is ending transfer.");
+		System.out.println("Client didn't get a response and has now made 10 attempts. Client is ending transfer.");
 		timeout = true;
 	}
 	
-	
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	public boolean checkSource(){
+		boolean isValid = true;
+		if (portNum != receivePacket.getPort()){
+			System.out.println("Packet Received came from the wrong port");
+			isValid = false;
+			sendError("Packet Received from unknown port", 5);
+		}
+		if (receivePacket.getData()[0] != 0  ){
+		
+			isValid = false;
+			System.out.println("Invalid OP code first byte not 0x00");
+			sendError("Invalid OP code first byte not 0x00", 4);
+		}
+		if (!(receivePacket.getData()[1] == 3 || receivePacket.getData()[1] == 4|| receivePacket.getData()[1] == 5) ){
+			isValid = false;
+			System.out.println("Invalid OP code not Data, Ack or ERROR");
+			sendError("Invalid OP code not Data, Ack or ERROR", 4);
+		}
+		if (receivePacket.getData()[516] !=0 ){
+			isValid = false;
+			receivePacket.getData()[516] = 0;
+			System.out.println("TFTP ERROR Datagram was more than 516 bytes");
+			sendError("TFTP ERROR Datagram was more than 516 bytes", 4);
+		}
+		
+		return isValid ;
+		}
+	public void sendError(String message, int code){
+
+			byte [] errorMes = new byte[4 + message.length()];
+			errorMes[1] = 5;
+			errorMes[3] = (byte) code;
+			System.arraycopy(message.getBytes(), 0, errorMes, 4, message.length());
+			DatagramPacket sE = null;
+			try {
+				sE = new DatagramPacket(errorMes, errorMes.length, InetAddress.getLocalHost(), receivePacket.getPort());
+			} catch (UnknownHostException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			for(int p = 0; p < 4; p++){
+				System.out.println(sE.getData()[p]);
+			}
+			
+		    System.out.println(sE.getPort());
+			System.out.println( "Sending "+ message + " Error");
+			try {
+				sendReceiveSocket.send(sE);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}		
+		}
+			
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	MANIPULATING BYTE ARRAYS
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
@@ -975,35 +1163,29 @@ public class Client
 	//	ERRORS!!!!!!!!!!!!!!!!!!!!!!!!
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
-    /*
-     * Extract the error code from an error packet. Does not extract error message!!!
-     * @param data Error packet as a byte array.
-     * @return Error packet as a string.
+    /**
+     * Extracts error data from an error packet datagram. Includes the error type and message if applicable.
+     * 
+     * @param A byte array of error data from a datagram packet.
+     * @return A string containing the error type and additional error information from the data array.
      */
-    private String extractErrorData(byte[] data)
+    public String extractErrorData(byte[] errorDataBytes)
     {
-    	String errMsgStr;
-    	// Determine error type
-    	switch(data[3])
+      String errorCodeString;
+
+      switch(errorDataBytes[3])
         {
-            case 1 : errMsgStr = "File not found";
-                     break;
-            case 2 : errMsgStr = "Access violation";
-                     break;
-            case 3 : errMsgStr = "Disk full or allocation exceeded";
-                     break;
-            case 4 : errMsgStr = "Illegal TFTP operation";
-                     break;
-            case 5 : errMsgStr = "Unknown transfer ID";
-                     break;
-            case 6 : errMsgStr = "File already exists";
-                     break;
-            case 7 : errMsgStr = "No such user";
-                     break;
-            default: errMsgStr = "Not defined";
-                     break;
+            case 1 : errorCodeString = "File not found"; break;
+            case 2 : errorCodeString = "Access violation"; break;
+            case 3 : errorCodeString = "Disk full or allocation exceeded"; break;
+            case 4 : errorCodeString = "Illegal TFTP operation"; break;
+            case 5 : errorCodeString = "Unknown transfer ID"; break;
+            case 6 : errorCodeString = "File already exists"; break;
+            case 7 : errorCodeString = "No such user"; break;
+            default: errorCodeString = "Not defined"; break;
         }
-    	return errMsgStr;
+        
+      return errorCodeString + ": " + new String(errorDataBytes).trim();
     }
     
     /**
