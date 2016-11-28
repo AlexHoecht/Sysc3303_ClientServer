@@ -78,7 +78,7 @@ public class Client
 		{
 			sendReceiveSocket = new DatagramSocket();
 			//sendReceiveSocket.setSendBufferSize(1000);
-			sendReceiveSocket.setSoTimeout(100);
+			sendReceiveSocket.setSoTimeout(150);
 		}
 		catch(SocketException se)
 		{
