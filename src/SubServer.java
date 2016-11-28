@@ -9,7 +9,7 @@ public class SubServer implements Runnable {
 	
 //////////////////////////////////////////////////
 	private static String filePath;
-	private static final int SOCKET_TIMEOUT = 100;
+	private static final int SOCKET_TIMEOUT = 150;
 	private static final int TIMEOUT_ATTEMPTS = 10;
 //////////////////////////////////////////////////
 	
