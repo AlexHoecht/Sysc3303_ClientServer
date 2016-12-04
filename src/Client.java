@@ -350,7 +350,7 @@ public class Client
 				}
 				break;
 			}
-			System.out.println(receivePacket.getData().length);
+			//System.out.println(receivePacket.getData().length);
 			// Last step of the loop is to ask the user if they want to kill the client
 			int kill = JOptionPane.showConfirmDialog(popupWindow,"Would you like to continue?", "Kill Client", JOptionPane.YES_NO_OPTION);
 			if(kill != 0)
