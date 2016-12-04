@@ -193,7 +193,7 @@ public class Server
 				
 				String fileName = new String(file);
 				
-					t = new Thread (new SubServer(receivePacket.getPort(), receivePacket.getData(), fileName, data, directory, directoryPath));
+					t = new Thread (new SubServer(receivePacket.getPort(), receivePacket.getData(), fileName, data, directory, directoryPath, receivePacket.getAddress()));
 					t.start();
 					initialPort = receivePacket.getPort();
 					hasThreadStarted = true;
