@@ -9,9 +9,14 @@
  */
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
 import java.net.*;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -1375,7 +1380,7 @@ public class ErrorSimulator
 		System.out.println("Address: " + packet.getAddress() + "\n");
 		System.out.println("Port: " + packet.getPort() + "\n");
 		System.out.println("Length: " + packet.getLength() + "\n");
-		System.out.println("Bytes: " + Arrays.toString(data) + "\n");
+		System.out.println("Bytes: " + byteArrToString(data) + "\n");
 		//System.out.println("String: " + new String(data) + "\n");
 	}
 	
@@ -1463,6 +1468,17 @@ public class ErrorSimulator
 	    	data = Arrays.copyOf(data, i);
 	    	return data;
 	    }
+	   
+	   private String byteArrToString(byte[] array)
+		{
+			String str = "[ ";
+			for(int i = 0; i < array.length; i++)
+			{
+				str += (0xFF & array[i]) + " ";
+			}
+			str += "]";
+			return str;
+		}
 
 	
 	/**
@@ -1477,3 +1493,5 @@ public class ErrorSimulator
 	}
 	
 }
+
+
