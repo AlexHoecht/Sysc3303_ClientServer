@@ -27,6 +27,7 @@ public class Client
 	private String mode;
 	private String inputString;	// Last input from the user
 	private String directoryPath;	// Path of the current directory used to transfer files to and from
+	private InetSocketAddress address;
 	
 	// Size of the Packet being sent back to the client
 	private byte[] sendPacketSize;
@@ -239,7 +240,8 @@ public class Client
 					// If we are operating in Normal mode, Send to the Server 
 					else
 					{
-						sendPacket = new DatagramPacket(message,message.length,InetAddress.getLocalHost(),69);
+						
+						sendPacket = new DatagramPacket(message,message.length,address.getAddress(),69);
 					}
 				}
 				catch(UnknownHostException e)
@@ -338,6 +340,7 @@ public class Client
 				{
 					portNum = receivePacket.getPort();
 					sendPacket.setPort(portNum);
+					sendPacket.setAddress(address.getAddress());
 					// Begin to receive data to read into a file
 					waitForData();
 				}
@@ -350,7 +353,7 @@ public class Client
 				}
 				break;
 			}
-			//System.out.println(receivePacket.getData().length);
+			System.out.println(receivePacket.getData().length);
 			// Last step of the loop is to ask the user if they want to kill the client
 			int kill = JOptionPane.showConfirmDialog(popupWindow,"Would you like to continue?", "Kill Client", JOptionPane.YES_NO_OPTION);
 			if(kill != 0)
@@ -473,6 +476,7 @@ public class Client
 		// Set port to send and receive to
 		portNum = receivePacket.getPort();
 	    sendPacket.setPort(portNum);
+	    sendPacket.setAddress(address.getAddress());
 	    
 	    System.out.println("Sending data to: " + sendPacket.getPort() + "\n");
 	    
@@ -677,15 +681,9 @@ public class Client
 	 */
 	public void createPack(byte[] packet)
 	{
-		try
-		{
-			sendPacket = new DatagramPacket(packet,packet.length,InetAddress.getLocalHost(),portNum);
-		}
-		catch(UnknownHostException e)
-		{
-			e.printStackTrace();
-			System.exit(1);
-		}
+		
+			sendPacket = new DatagramPacket(packet,packet.length,address.getAddress(),portNum);
+	
     	
 	}
 	
@@ -705,6 +703,7 @@ public class Client
 		// We want to send to the SubServer thread
 		portNum = receivePacket.getPort();
 		sendPacket.setPort(portNum);
+		sendPacket.setAddress(address.getAddress());
 		sendPacket.setData(code);
 		
 		if(qORv == 1)
@@ -1070,9 +1069,14 @@ public class Client
 		String[] tORn = {"test", "normal"};
 		String[] qORv = {"verbose","quiet"};
 		String[] wORrORe = {"write", "read", "error"};
+
 	
 		// USER INPUT 1: Test mode (Uses ErrorSimulator) or Normal mode (Doesn't uses the ErrorSimulator)
 		String mode = (String) JOptionPane.showInputDialog(popupWindow,"Choose a Mode:", "Mode", JOptionPane.QUESTION_MESSAGE, null, tORn, tORn[0]);
+		String ipAddress = "";
+		if(mode == "normal" ){
+			ipAddress = JOptionPane.showInputDialog(null,"Specify ipAddress:", "IpAddress", JOptionPane.QUESTION_MESSAGE);
+		}
 	
 		// USER INPUT 2: Quiet mode (Minimal information displayed) or Verbose mode (Displays detailed information)
 		String sound = (String) JOptionPane.showInputDialog(popupWindow,"Choose Output Type:", "Output", JOptionPane.QUESTION_MESSAGE, null, qORv, qORv[0]);
@@ -1094,6 +1098,17 @@ public class Client
 			if(requestType == "read"){this.request = "read";}
 			if(requestType == "error"){this.request = "error";}
 			this.fileName = f;
+			
+			if(mode == "test"){try {
+				this.address = new InetSocketAddress (InetAddress.getLocalHost(),23);
+			} catch (UnknownHostException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}}
+			
+			if(mode == "normal"){
+				this.address = new InetSocketAddress (ipAddress,69);
+			}
 			allValidInputs = true;
 		}
 		else
