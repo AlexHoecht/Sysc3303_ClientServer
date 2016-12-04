@@ -53,7 +53,7 @@ public class SubServer implements Runnable {
 	 * 			s - The server directory
 	 * 			fP - The predefined file path of the file
 	 */
-	public SubServer ( int target, byte[] d, String fN, byte[] requestOp, File s, String fP)
+	public SubServer ( int target, byte[] d, String fN, byte[] requestOp, File s, String fP, InetAddress targetIp)
 	{
 		// Save the name of the requested file
 		fileName = fN;
@@ -91,18 +91,9 @@ public class SubServer implements Runnable {
 			receivePacketSize = new byte[517];
 		}
 		
-		// Creating Datagram Packets!
-		try 
-		{
-			// Create the packet of designated size, and points to the address and port of
-			// the client
-			sendPacket = new DatagramPacket (sendPacketSize, sendPacketSize.length-1,
-													InetAddress.getLocalHost(), target);
-		} 
-		catch (UnknownHostException e) 
-		{
-			e.printStackTrace();
-		}
+		// Create the packet of designated size, and points to the address and port of
+		// the client
+		sendPacket = new DatagramPacket (sendPacketSize, sendPacketSize.length-1, targetIp, target);
 
 		// Create the packet of designated size, and points to the address and port of
 		// the client
@@ -231,8 +222,13 @@ public class SubServer implements Runnable {
 		{
 			String stringData = new String(cutEnd(byteData));
 			for(int i = 0; i< byteData.length; i++){
-				System.out.print(byteData[i]);
-			}
+    			if (i != 3){
+	    		System.out.print( byteData[i] + " ");
+    			}
+    			else{
+    				System.out.print((byteData[i] & 0xff) + " ");
+    			}
+	    	}
 	
 			System.out.println(f.getAbsolutePath().toString());
 			
