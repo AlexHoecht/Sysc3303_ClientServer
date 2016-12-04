@@ -20,11 +20,10 @@ public class Server
 {
 	// Server's well known port
 	private static final int PORT = 69;
-	
-	private int initialPort;
 	// Name of the directory where server files will be stored
 	private static final String DIRECTORY_NAME = "Server Directory";
 	
+	// Datagram Components
 	private DatagramSocket socket;
 	private DatagramPacket receivePacket, sendPacket;
 	
@@ -34,9 +33,9 @@ public class Server
 	private String directoryPath;
 	// Error message to respond to an invalid request with if applicable
 	private String errorMessage;
-	
+	// A reference to the port of the initial request packet
+	private int initialPort;
 	// The client connection thread
-	// TODO Currently the server can spawn only one client connection manager thread at a time. Eventually this will have to be a list of threads.
 	private Thread t;
 	// Boolean denoting whether a client connection manager is running. 
 	private boolean hasThreadStarted;
@@ -56,26 +55,23 @@ public class Server
 		try
 		{
 			socket = new DatagramSocket(PORT);	
+			socket.setSoTimeout(150);
 		}
 		catch(SocketException se)
 		{
 			se.printStackTrace();
 			System.exit(1);
 		}
-		try {
-			socket.setSoTimeout(150);
-		} catch (SocketException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
+
+		// Server Directory
 		directory = new File(DIRECTORY_NAME);
+		
 		// Create the directory if it doesn't already exist
 		if(!directory.exists())
 		{
-			System.out.println("Creating server directory");
 			try
 			{
+				System.out.println("Creating server directory");
 				directory.mkdir();
 			}
 			catch(SecurityException se)
@@ -111,7 +107,8 @@ public class Server
 			
 			// That packet that will receive the Packet from the Client
 			receivePacket = new DatagramPacket(msg, msg.length);
-			if (!timeout){
+			if (!timeout)
+			{
 				System.out.println("Waiting for a packet...\n");
 			}
 			timeout = false;
@@ -148,7 +145,7 @@ public class Server
 				}
 				catch (IOException e)
 				{
-					System.out.println("Error\n" + e);
+					System.out.println("Error!!!!!!\n" + e);
 					e.printStackTrace();
 					System.exit(1);
 				}

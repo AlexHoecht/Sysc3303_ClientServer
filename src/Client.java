@@ -537,7 +537,11 @@ public class Client
 		    		System.out.println("The packet being sent contains: ");
 		    		for (int i = 0; i < lastPack.length; i++)
 		    		{
-			    		System.out.print( lastPack[i] + " ");
+		    			if(i == 3) {System.out.print(" " + Byte.toUnsignedInt(pack[3]));}
+		    			else
+		    			{
+		    				System.out.print(" " + pack[i]);
+		    			}
 			    	}
 		    		System.out.println("");
 		    	}
@@ -563,7 +567,12 @@ public class Client
 		    		System.out.println("The packet being sent contains: ");
 		    		for (int i = 0; i < pack.length; i++)
 		    		{
-			    		System.out.print(" " + pack[i]);
+		    			if(i == 3){ System.out.print(" " + Byte.toUnsignedInt(pack[3]));}
+		    			else
+		    			{
+		    				System.out.print(" " + pack[i]);
+		    			}
+		    				
 			    	}
 		    	}
 	    	}
@@ -595,7 +604,6 @@ public class Client
 	    	send(sendPacket);
 	    	
 	    }
-	    System.out.println("DONE WRITE");
 	    in.close();
 	}
 

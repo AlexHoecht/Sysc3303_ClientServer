@@ -118,7 +118,6 @@ public class SubServer implements Runnable {
 	public void run() 
 	{	
 		// If write request
-		System.out.println("HI");
 		if (data[1] == 2)
 		{
 			// File creation
@@ -202,10 +201,9 @@ public class SubServer implements Runnable {
     	// File already exists ERROR
     	else
     	{
-    		//JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
     		System.out.println("File already exists sending error");
     		sendPacket.setData(new byte[] {0, 5, 0, 6});
-    		System.out.println("THIS IS IT!! " +  Arrays.toString(sendPacket.getData()) + "\n");
+    		System.out.println("File:\t" +  Arrays.toString(sendPacket.getData()) + "\n");
     		errorOut = true;
     		try 
     		{
@@ -221,32 +219,39 @@ public class SubServer implements Runnable {
 	}
 	
 	
-	/*
+	/**
 	 * A method that when called, properly formats the passed data and then writes the data into the passed file
+	 * @param f	The file to be appended to
+	 * @param byteData	The data to be appeneded
 	 */
 	public void appendToFile(File f, byte[] byteData)
 	{
-		if(receivePacket.getData()[4] != 0x00){
-		try
+		// Make sure received packet is not an ACK
+		if(receivePacket.getData()[4] != 0x00)
 		{
-			String stringData = new String(cutEnd(byteData));
-			for(int i = 0; i< byteData.length; i++){
-				System.out.print(byteData[i]);
+			try
+			{
+				// Print out file path
+				System.out.println("File Path:\t" + f.getAbsolutePath().toString());
+				// Reformat data
+				String stringData = new String(cutEnd(byteData));
+				for(int i = 0; i< byteData.length; i++)
+				{
+					// Print data to be appened
+					System.out.print(byteData[i]);
+				}
+				
+				FileWriter fw = new FileWriter(f.getAbsolutePath(),!firstBlock);
+				firstBlock = false;
+				BufferedWriter bw = new BufferedWriter(fw);
+				
+				bw.write(stringData);
+				bw.close();
 			}
-	
-			System.out.println(f.getAbsolutePath().toString());
-			
-			FileWriter fw = new FileWriter(f.getAbsolutePath(),!firstBlock);
-			firstBlock = false;
-			BufferedWriter bw = new BufferedWriter(fw);
-			
-			bw.write(stringData);
-			bw.close();
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -255,21 +260,21 @@ public class SubServer implements Runnable {
 	//	SUBSERVER BEHAVIOUR
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
-	/*
+	/**
 	 * A method that handles how the SubServer reads data to the Client directory
+	 * @param readFile The file being read
+	 * @throws IOException
 	 */
 	public void handleRead(String readFile) throws IOException
 	{
+		//	
 		sendPacket.setPort(errorPort);
-		//stem.out.println("HERE " + receivePacket.getPort());
+
+		
 		// First check to see if the requested file exists
 		// Create the file to be added to the directory
 		File tempFile = new File(readFile);
-		/*
-		for(String f : serverDir.list())
-		{
-			System.out.print(f);
-		}*/
+		
 		
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// ERROR CHECKING
@@ -293,24 +298,23 @@ public class SubServer implements Runnable {
 	        return;
 	    }
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		
+		// If no errors found so far
 		else
 		{
 			// Sending read data from file to client
 			System.out.println("Sending data to: " + sendPacket.getPort());
-			int packNum = 1;
-			BufferedInputStream in = new BufferedInputStream(new FileInputStream(readFile));
 			
+			
+			BufferedInputStream in = new BufferedInputStream(new FileInputStream(readFile));
 			//bytes from file
 			byte[] fdata = new byte[512];
-				
 			//op code and block # + fdata
 		    byte[] pack = new byte[516];
 		    boolean mul512 = true;
 		
+		    int packNum = 1;
 		    // used for cycling through file
 		    int n;
-		
 		    // a and b used for printing packet number without negatives
 		    int a;
 		    int b;
@@ -325,7 +329,7 @@ public class SubServer implements Runnable {
 		    	pack[1] = 3; 
 		    	//setting bytes for packet number converting from int to 2 bytes
 		    	pack[3] = (byte) (packNum & 0xFF);
-		    	pack[2] = (byte) ((packNum >> 8) & 0xFF); 
+		    	pack[2] = (byte) ((packNum >> 8) & 0xFF);
 		    	packNum ++;
 		    
 		    	// if end of data from file is null then the remaining part of the file was under 512 bytes
@@ -333,16 +337,12 @@ public class SubServer implements Runnable {
 		    	{
 		    		// resized array to match the remaining bytes in file (from 512 to < 512)
 		    	    byte[] lastData = cutEnd(fdata);
-		    	    System.out.println(lastData[3]);
 		    	    mul512 = false;
 		    		System.out.println("data not 512 bytes");
 		    		System.out.println("Size of this is array is: " + lastData.length);
 			
 		    		// copies file data behind opcode and packet number
 		    		System.arraycopy(lastData, 0, pack, 4, lastData.length);
-			
-		    		// resizes final array from 516 to 4 + remaining data from file
-		    		//byte[] lastPack = resize(pack);
 			
 		    		// creates final packet
 		    		sendPacket.setData(pack);
@@ -353,7 +353,6 @@ public class SubServer implements Runnable {
 		    	}
 		    	else
 		    	{
-		    		System.out.println("\n" + fdata[511] + "\n");
 		    		// if file is sending 512 bytes for data
 		    		System.arraycopy(fdata, 0, pack, 4, fdata.length);
 		    		sendPacket.setData(pack);
@@ -363,17 +362,25 @@ public class SubServer implements Runnable {
 		    		a &= 0xFF;
 		    		b &= 0xFF;
 		
-		    	for (int i = 0; i < pack.length; i++)
-		    	{
-		    		System.out.print(" " + pack[i]);
-		    	}
-		    	}
-		    	for (int i = 0; i < sendPacket.getData().length; i++)
-		    	{
-		    		System.out.print(" " + sendPacket.getData()[i]);
+			    	for (int i = 0; i < pack.length; i++)
+			    	{
+			    		if(i == 3) {System.out.print(" " + Byte.toUnsignedInt(pack[3]));}
+		    			else
+		    			{
+		    				System.out.print(" " + pack[i]);
+		    			}
+			    	}
 		    	}
 		    	
-		    	//System.out.println( "\n \n" + sendPacket.getData()[1] + " 2nd byte of data being sent");
+		    	for (int i = 0; i < sendPacket.getData().length; i++)
+		    	{
+		    		if(i == 3) {System.out.print(" " + Byte.toUnsignedInt(pack[3]));}
+	    			else
+	    			{
+	    				System.out.print(" " + pack[i]);
+	    			}
+		    	}
+		    	
 		    	
 		    	try
 				{
@@ -387,19 +394,17 @@ public class SubServer implements Runnable {
 				}
 		    	re(fdata);
 		    	
-		    	
-		    	System.out.println("Reaching receive");
 		    	receive();
-		    	//System.out.println( "\n \n" + receivePacket.getData()[1] + " 2nd byte of data being sent");
+		  
 		    	sendPacket.setData(re(sendPacket.getData()));
 		    }
-		    if (mul512){
+		    if (mul512)
+		    {
 		    	byte[] lastPack512 = {0, 3, (byte) ((packNum >> 8) & 0xFF), (byte) (packNum & 0xFF), 0};
 		    	sendPacket.setData(lastPack512);
 		    	sendPacket();
 		    	
 		    }
-		    System.out.println("Leaving Send Data");
 			in.close();
 			}
 		}
@@ -418,6 +423,12 @@ public class SubServer implements Runnable {
 		
 		// Set the packet number
 		opNum[3] = (byte) packetCounter;
+		
+		if(packetCounter >= 127)
+		{
+			opNum[3] = (byte) Byte.toUnsignedInt(opNum[3]);
+		}
+		
 		byte[] writeData = cutEnd(resize(receivePacket.getData()));
 	
 		
