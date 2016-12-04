@@ -19,6 +19,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import javax.swing.JOptionPane;
+
 /**
 * An Error simulator to generate errors on specific packets and pass them on
 **/
@@ -41,6 +43,7 @@ public class ErrorSimulator
 	private boolean goingServer = false;
 	private int errorNumberServer;
 	private int errorNumberClient;
+	private InetSocketAddress address;
 	
 	private int delayPacketcounter;
 	
@@ -74,7 +77,7 @@ public class ErrorSimulator
 	 */
 	public ErrorSimulator()
 	{
-		serverWait = true;
+		
 		try
 		{
 			receiveSocket = new DatagramSocket(23); // construct DatagramSocket and bind to port 23
@@ -111,6 +114,9 @@ public class ErrorSimulator
 	{
 
 		boolean running = true;
+		serverWait = true;
+		String ipAddress = JOptionPane.showInputDialog(null,"Specify ipAddress:", "IpAddress", JOptionPane.QUESTION_MESSAGE);
+		address = new InetSocketAddress (ipAddress, serverPort);
 
 		while(running)
 		{
@@ -521,8 +527,8 @@ public class ErrorSimulator
 		printReceivedFromClient(receivePacket); // print the packet received from client
 		clientPort = receivePacket.getPort(); // store the client port
 		clientIP = receivePacket.getAddress(); // store the client address
-		
-		sendPacket = new DatagramPacket(data, receivePacket.getLength(), serverIP, 69);
+	
+		sendPacket = new DatagramPacket(data, receivePacket.getLength(), address.getAddress(), 69);
 		
 		
 		
@@ -648,7 +654,12 @@ public class ErrorSimulator
 			{
 				data = new byte[516];
 				receivePacket = new DatagramPacket(data, data.length);
-				
+				try {
+					sendPacket.setAddress(InetAddress.getLocalHost());
+				} catch (UnknownHostException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 				
 				try
 				{
@@ -883,6 +894,7 @@ public class ErrorSimulator
 				receivePacket = new DatagramPacket(data, data.length);
 				
 				
+				
 				try
 				{
 					clientSocket.receive(receivePacket); // wait until a datagram is received on the clientSocket
@@ -894,7 +906,7 @@ public class ErrorSimulator
 					System.exit(1);
 				}
 				printReceivedFromClient(receivePacket); // print the packet received from client
-				sendPacket = new DatagramPacket(data, receivePacket.getLength(), serverIP, serverPort);
+				sendPacket = new DatagramPacket(data, receivePacket.getLength(), address.getAddress(), serverPort);
 				
 				 
 				
