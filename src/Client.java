@@ -29,6 +29,8 @@ public class Client
 	private String directoryPath;	// Path of the current directory used to transfer files to and from
 	private InetSocketAddress address;
 	
+	String ipAddress = "";
+	
 	// Size of the Packet being sent back to the client
 	private byte[] sendPacketSize;
 	private byte[] receivePacketSize;
@@ -1073,7 +1075,7 @@ public class Client
 	
 		// USER INPUT 1: Test mode (Uses ErrorSimulator) or Normal mode (Doesn't uses the ErrorSimulator)
 		String mode = (String) JOptionPane.showInputDialog(popupWindow,"Choose a Mode:", "Mode", JOptionPane.QUESTION_MESSAGE, null, tORn, tORn[0]);
-		String ipAddress = "";
+		
 		if(mode == "normal" ){
 			ipAddress = JOptionPane.showInputDialog(null,"Specify ipAddress:", "IpAddress", JOptionPane.QUESTION_MESSAGE);
 		}
