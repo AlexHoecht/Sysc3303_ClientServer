@@ -1104,7 +1104,9 @@ public class Client
 		//USER INPUT 4: What are we doing to the user specified file
 		String requestType = (String) JOptionPane.showInputDialog(popupWindow,"Choose Request Type:", "Request", JOptionPane.QUESTION_MESSAGE, null, wORrORe, wORrORe[0]);
 	
-		if(mode != null && sound != null && f != null && requestType != null)
+		if(f == null){f = "";}
+		
+		if(mode != null && sound != null && !f.equals("") && requestType != null)
 		{
 			System.out.println("ALL VALID INPUTS RECEIVED :)");
 			if(mode == "test"){this.tORn = 1;}
@@ -1138,7 +1140,7 @@ public class Client
 			{
 				JOptionPane.showMessageDialog(popupWindow, "Output Type not selected!");
 			}
-			if(f == null)
+			if(f.equals(""))
 			{
 				JOptionPane.showMessageDialog(popupWindow, "File not selected!");
 			}
@@ -1236,7 +1238,7 @@ public class Client
     
   	/**
      * Improved version of Arrays.toString. Returns the byte in the array as a string representation of unsigned integers.
-     * @param array - The byte array to be stringefied.
+     * @param array - The byte array to be stringified.
      */
     public String byteArrToString(byte[] array)
     {
