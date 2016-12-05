@@ -312,7 +312,26 @@ public class Client
 					System.out.println("Packet: ");
 
 					System.out.println(byteArrToString(receivePacket.getData()));
-//					for(int k = 0; k < receivePacket.getData().length; k++)
+					
+					if(receivePacket.getData()[1] == 5 && receivePacket.getData()[3] == 1 ){
+						System.out.println("File not found");
+					}
+					if(receivePacket.getData()[1] == 5 && receivePacket.getData()[3] == 2 ){
+						System.out.println("Access Violation");
+					}
+					if(receivePacket.getData()[1] == 5 && receivePacket.getData()[3] == 3 ){
+						System.out.println("Disk Full");
+					}
+					if(receivePacket.getData()[1] == 5 && receivePacket.getData()[3] == 4 ){
+						System.out.println("Illegel TFTP Operation");
+					}
+					if(receivePacket.getData()[1] == 5 && receivePacket.getData()[3] == 5 ){
+						System.out.println("Unknown Transfer ID");
+					}
+					if(receivePacket.getData()[1] == 5 && receivePacket.getData()[3] == 6 ){
+						System.out.println("File Already Exists");
+					}
+//					for(int k = 3; k < receivePacket.getData().length; k++)
 //					{
 //						System.out.print(" " + receivePacket.getData()[k]);
 //					}
@@ -352,6 +371,14 @@ public class Client
 				//////////////////////////////////////////////////////////////
 				//	CLIENT BEHAVIOUR IF IT RECEIVES AN ERROR FROM THE SERVER//
 				//////////////////////////////////////////////////////////////
+					if(receivePacket.getData()[3] == 1){
+						JOptionPane.showMessageDialog(popupWindow, "ERROR File Not Found");
+					}else if(receivePacket.getData()[3] == 2){
+						JOptionPane.showMessageDialog(popupWindow, "ERROR Access Violation");
+					}else if(receivePacket.getData()[3] == 3){
+						JOptionPane.showMessageDialog(popupWindow, "ERROR Disk Full");
+					}
+					
 				JOptionPane.showMessageDialog(popupWindow, "Server produced an error! \n" + "Please try again");
 				}
 				break;
@@ -824,6 +851,8 @@ public class Client
 					if(sendPacket.getData()[1] == 1)
 					{
 						// Determine error code
+						
+						System.out.println("Packet: \t"+byteArrToString(receivePacket.getData()));
 						switch(receivePacket.getData()[3])
 						{
 							case 1	:	haltCurrentTransfer = true;
@@ -853,6 +882,8 @@ public class Client
 					// Right after a write request
 					else if(sendPacket.getData()[1] == 2)
 					{
+
+						System.out.println("Packet: \t"+byteArrToString(receivePacket.getData()));
 						// Determine error code
 						switch(receivePacket.getData()[3])
 						{
@@ -1174,13 +1205,13 @@ public class Client
     		System.out.println("Invalid option");
     	}
 
-    	if(qORv == 1)
+    	if(qORv == 2)
     	{
     		System.out.println("We are now in quiet mode\n");
     	}
 
     	// If the user inputs 2
-    	else if(qORv == 2)
+    	else if(qORv == 1)
     	{
     		System.out.println("We are now in verbose mode\n");
     	}

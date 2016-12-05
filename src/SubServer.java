@@ -195,7 +195,7 @@ public class SubServer implements Runnable {
     	{
     		//JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
     		System.out.println("File already exists sending error");
-    		sendPacket.setData(new byte[] {0, 5, 0, 6});
+    		sendPacket.setData(generateErrorData(6, "The file already exists"));
     		System.out.println("THIS IS IT!! " +  byteArrToString(sendPacket.getData()) + "\n");
     		errorOut = true;
     		try 
@@ -273,7 +273,7 @@ public class SubServer implements Runnable {
 		// File does not exist ERROR
 		if(!tempFile.isFile())
 	    {
-			sendPacket.setData(new byte[] {0, 5, 0, 1});
+			sendPacket.setData(generateErrorData(1,"File does not exist"));
 			subServerSocket.send(sendPacket);
 			JOptionPane.showMessageDialog(popupWindow, "ERROR: File does not exist! \n" + "Please create and try again.");
             return;
@@ -858,5 +858,31 @@ public class SubServer implements Runnable {
 	        }
         }
         return str += "]";
+    }
+    
+    public byte[] generateErrorData(int errorCode, String errorMessageString)
+    {
+        byte[] errorDataBytes = new byte[5 + errorMessageString.length()];
+        byte[] errorMessageBytes = errorMessageString.getBytes();
+        
+        // Default error code if necessary
+        if(errorCode < 0 || errorCode > 7)
+        {
+            errorCode = 0;
+        }
+        
+        // Initialise opcode, error cods, and zero bytes
+        errorDataBytes[0] = 0;
+        errorDataBytes[1] = 5;
+        errorDataBytes[2] = 0;
+        errorDataBytes[3] = (byte) errorCode;
+        errorDataBytes[4 + errorMessageString.length()] = 0;
+        // Initialise error error message
+        for(int i = 0; i < errorMessageString.length(); i++)
+        {
+            errorDataBytes[i + 4] = errorMessageBytes[i];
+        }
+        
+        return errorDataBytes;
     }
 }
