@@ -838,7 +838,7 @@ public class SubServer implements Runnable {
     
     /**
      * Improved version of Arrays.toString. Returns the byte in the array as a string representation of unsigned integers.
-     * @param array - The byte array to be stringefied.
+     * @param array - The byte array to be stringified.
      */
     public String byteArrToString(byte[] array)
     {
