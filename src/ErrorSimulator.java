@@ -1469,16 +1469,29 @@ public class ErrorSimulator
 	    	return data;
 	    }
 	   
-	   private String byteArrToString(byte[] array)
-		{
-			String str = "[ ";
-			for(int i = 0; i < array.length; i++)
-			{
-				str += (0xFF & array[i]) + " ";
-			}
-			str += "]";
-			return str;
-		}
+	   /**
+	     * Improved version of Arrays.toString. Returns the byte in the array as a string representation of unsigned integers.
+	     * @param array - The byte array to be stringefied.
+	     */
+	    public String byteArrToString(byte[] array)
+	    {
+	        String str = "[ ";
+	        if(array[1] == 4)
+	        {
+	        	for(int i = 0; i < 4; i++)
+	        	{
+	        		str += (0xFF & array[i]) + " ";
+	        	}
+	        }
+	        else
+	        {
+		        for(int i = 0; i < array.length; i++)
+		        {
+		            str += (0xFF & array[i]) + " ";
+		        }
+	        }
+	        return str += "]";
+	    }
 
 	
 	/**

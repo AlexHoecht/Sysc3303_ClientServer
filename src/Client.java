@@ -278,7 +278,7 @@ public class Client
 					System.out.println("Length: " + length1);
 					String info = new String(message,0,length1);
 					System.out.println("String : " + info);
-					System.out.println("Bytes : " + Arrays.toString(message));
+					System.out.println("Bytes : " + byteArrToString(message));
 					System.out.println("");
 				}
 
@@ -311,10 +311,11 @@ public class Client
 					System.out.println("Length: " + length2);
 					System.out.println("Packet: ");
 
-					for(int k = 0; k < receivePacket.getData().length; k++)
-					{
-						System.out.print(" " + receivePacket.getData()[k]);
-					}
+					System.out.println(byteArrToString(receivePacket.getData()));
+//					for(int k = 0; k < receivePacket.getData().length; k++)
+//					{
+//						System.out.print(" " + receivePacket.getData()[k]);
+//					}
 					System.out.println();
 					System.out.println("\n");
 				}
@@ -445,10 +446,11 @@ public class Client
 			String stringData = new String(resize(byteData));
 			System.out.println( "\n" + stringData + "\n");
 			
-			for (int i = 0; i < resize(byteData).length; i++)
-	    	{
-	    		System.out.print(resize(byteData)[i] + ", ");
-	    	}
+			System.out.println(byteArrToString(resize(byteData)));
+//			for (int i = 0; i < resize(byteData).length; i++)
+//	    	{
+//	    		System.out.print(resize(byteData)[i] + ", ");
+//	    	}
 			System.out.println(" ");
 			// Write data to file
 			FileWriter fw = new FileWriter(f.getAbsolutePath(), fileWriterAppend);
@@ -541,14 +543,15 @@ public class Client
 	        	if(qORv == 1)
 		    	{
 		    		System.out.println("The packet being sent contains: ");
-		    		for (int i = 0; i < lastPack.length; i++)
-		    		{
-			    		if(i == 3) {System.out.print(" " + Byte.toUnsignedInt(pack[3]));}
-		    			else
-		    			{
-		    				System.out.print(" " + pack[i]);
-		    			}
-			    	}
+		    		System.out.println(byteArrToString(lastPack));
+//		    		for (int i = 0; i < lastPack.length; i++)
+//		    		{
+//			    		if(i == 3) {System.out.print(" " + Byte.toUnsignedInt(pack[3]));}
+//		    			else
+//		    			{
+//		    				System.out.print(" " + pack[i]);
+//		    			}
+//			    	}
 		    		System.out.println("");
 		    	}
 	    	}
@@ -571,14 +574,15 @@ public class Client
 	    		if(qORv == 1)
 		    	{
 		    		System.out.println("The packet being sent contains: ");
-		    		for (int i = 0; i < pack.length; i++)
-		    		{
-			    		if(i == 3) {System.out.print(" " + Byte.toUnsignedInt(pack[3]));}
-		    			else
-		    			{
-		    				System.out.print(" " + pack[i]);
-		    			}
-			    	}
+		    		System.out.println(byteArrToString(pack));
+//		    		for (int i = 0; i < pack.length; i++)
+//		    		{
+//			    		if(i == 3) {System.out.print(" " + Byte.toUnsignedInt(pack[3]));}
+//		    			else
+//		    			{
+//		    				System.out.print(" " + pack[i]);
+//		    			}
+//			    	}
 		    	}
 	    	}
 	
@@ -723,10 +727,11 @@ public class Client
 			System.out.println("Destination host port: " + sendPacket.getPort());
 			System.out.print("Response Packet: ");
 			
-			for(int k = 0; k<opNum.length;k++)
-			{
-				System.out.print(" " + opNum[k]);
-			}
+			System.out.println(byteArrToString(opNum));
+//			for(int k = 0; k<opNum.length;k++)
+//			{
+//				System.out.print(" " + opNum[k]);
+//			}
 			System.out.println();
 		}
 		
@@ -943,10 +948,11 @@ public class Client
 				System.out.println(receivePacket.getData()[2] + " " + receivePacket.getData()[3] + " sent " + sendPacket.getData()[2] + " " + sendPacket.getData()[3]);
 				System.out.println("Last Packet received was not what was exected it was\n");
 				
-				for (int i = 0; i < receivePacket.getData().length; i++)
-		    	{
-		    		System.out.print(receivePacket.getData()[i] + ", ");
-		    	}
+				System.out.println(byteArrToString(receivePacket.getData()));
+//				for (int i = 0; i < receivePacket.getData().length; i++)
+//		    	{
+//		    		System.out.print(receivePacket.getData()[i] + ", ");
+//		    	}
 
 			}
 			catch(IOException e)
@@ -1004,9 +1010,10 @@ public class Client
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
-			for(int p = 0; p < 4; p++){
-				System.out.println(sE.getData()[p]);
-			}
+			System.out.println(byteArrToString(sE.getData()));
+//			for(int p = 0; p < 4; p++){
+//				System.out.println(sE.getData()[p]);
+//			}
 			
 		    System.out.println(sE.getPort());
 			System.out.println( "Sending "+ message + " Error");
@@ -1227,7 +1234,29 @@ public class Client
   		return true;
   	}
     
- 
+  	/**
+     * Improved version of Arrays.toString. Returns the byte in the array as a string representation of unsigned integers.
+     * @param array - The byte array to be stringefied.
+     */
+    public String byteArrToString(byte[] array)
+    {
+        String str = "[ ";
+        if(array[1] == 4)
+        {
+        	for(int i = 0; i < 4; i++)
+        	{
+        		str += (0xFF & array[i]) + " ";
+        	}
+        }
+        else
+        {
+	        for(int i = 0; i < array.length; i++)
+	        {
+	            str += (0xFF & array[i]) + " ";
+	        }
+        }
+        return str += "]";
+    }
   	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	MAIN

@@ -196,7 +196,7 @@ public class SubServer implements Runnable {
     		//JOptionPane.showMessageDialog(popupWindow, "File Already Exists! \n" + "Please try again");
     		System.out.println("File already exists sending error");
     		sendPacket.setData(new byte[] {0, 5, 0, 6});
-    		System.out.println("THIS IS IT!! " +  Arrays.toString(sendPacket.getData()) + "\n");
+    		System.out.println("THIS IS IT!! " +  byteArrToString(sendPacket.getData()) + "\n");
     		errorOut = true;
     		try 
     		{
@@ -221,14 +221,15 @@ public class SubServer implements Runnable {
 		try
 		{
 			String stringData = new String(cutEnd(byteData));
-			for(int i = 0; i< byteData.length; i++){
-    			if (i != 3){
-	    		System.out.print( byteData[i] + " ");
-    			}
-    			else{
-    				System.out.print((byteData[i] & 0xff) + " ");
-    			}
-	    	}
+			System.out.println(byteArrToString(byteData));
+//			for(int i = 0; i< byteData.length; i++){
+//    			if (i != 3){
+//	    		System.out.print( byteData[i] + " ");
+//    			}
+//    			else{
+//    				System.out.print((byteData[i] & 0xff) + " ");
+//    			}
+//	    	}
 	
 			System.out.println(f.getAbsolutePath().toString());
 			
@@ -359,15 +360,16 @@ public class SubServer implements Runnable {
 		    		a &= 0xFF;
 		    		b &= 0xFF;
 		
-		    	for (int i = 0; i < pack.length; i++)
-		    	{
-		    		System.out.print(" " + pack[i]);
+		    		System.out.println(byteArrToString(sendPacket.getData()));
+//		    	for (int i = 0; i < pack.length; i++)
+//		    	{
+//		    		System.out.print(" " + pack[i]);
+//		    	}
 		    	}
-		    	}
-		    	for (int i = 0; i < sendPacket.getData().length; i++)
-		    	{
-		    		System.out.print(" " + sendPacket.getData()[i]);
-		    	}
+//		    	for (int i = 0; i < sendPacket.getData().length; i++)
+//		    	{
+//		    		System.out.print(" " + sendPacket.getData()[i]);
+//		    	}
 		    	
 		    	//System.out.println( "\n \n" + sendPacket.getData()[1] + " 2nd byte of data being sent");
 		    	
@@ -502,10 +504,11 @@ public class SubServer implements Runnable {
 		System.out.println("Destination host port: " + sendPacket.getPort());
 		System.out.print("Packet: ");
 		
-		for(int k = 0; k<ack.length;k++)
-		{
-			System.out.print(" " + ack[k]);
-		}
+		System.out.println(byteArrToString(ack));
+//		for(int k = 0; k<ack.length;k++)
+//		{
+//			System.out.print(" " + ack[k]);
+//		}
 		// sendPacket data is set to the ACK packet
 		sendPacket.setData(ack);
 		
@@ -537,10 +540,11 @@ public class SubServer implements Runnable {
 		System.out.println("Destination host port: " + sendPacket.getPort());
 		System.out.print("Response Packet: ");
 		
-		for(int k = 0; k<ack.length;k++)
-		{
-			System.out.print(" " + sendPacket.getData()[k]);
-		}
+		System.out.println(byteArrToString(ack));
+//		for(int k = 0; k<ack.length;k++)
+//		{
+//			System.out.print(" " + sendPacket.getData()[k]);
+//		}
 		
 		System.out.println();
 		
@@ -596,8 +600,8 @@ public class SubServer implements Runnable {
 					System.out.println("ERROR detected and handled");
 					continue;
 				}
-				System.out.println("Sent packet " + Arrays.toString(spd));
-				System.out.println("Receive packet " + Arrays.toString(rpd));
+				System.out.println("Sent packet " + byteArrToString(spd));
+				System.out.println("Receive packet " + byteArrToString(rpd));
 				// Receive data (Write to server)
 				if(receivePacket.getData()[1] == 3 && ((rpd[3] == 0 && rpd[2] == 0) ||( a == rpd[3] || b == rpd[2])))
 				{
@@ -643,9 +647,10 @@ public class SubServer implements Runnable {
 							
 					}else if(rpd[3] > 7){
 						System.out.print("\nThis Error does not exist [");
-						for(int p = 0; p < 4; p++){
-							System.out.print(rpd[p]);
-						}
+						System.out.println(byteArrToString(rpd));
+//						for(int p = 0; p < 4; p++){
+//							System.out.print(rpd[p]);
+//						}
 						System.out.println("]\n");
 						return;
 					}else{
@@ -679,7 +684,7 @@ public class SubServer implements Runnable {
 	public byte [] re (byte[] data)
 	{
 		for (int i = 0; i < data.length; i++)
-	{
+		{
 			data[i] = 0x00;
 		}
 		return data;
@@ -807,9 +812,10 @@ public class SubServer implements Runnable {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		for(int p = 0; p < 4; p++){
-			System.out.println(sE.getData()[p]);
-		}
+		System.out.println(byteArrToString(sE.getData()));
+//		for(int p = 0; p < 4; p++){
+//			System.out.println(sE.getData()[p]);
+//		}
 		
 	    System.out.println(sE.getPort());
 		System.out.println( "Sending "+ message + " Error");
@@ -829,4 +835,28 @@ public class SubServer implements Runnable {
 		}
 		return true;
 	}
+    
+    /**
+     * Improved version of Arrays.toString. Returns the byte in the array as a string representation of unsigned integers.
+     * @param array - The byte array to be stringefied.
+     */
+    public String byteArrToString(byte[] array)
+    {
+        String str = "[ ";
+        if(array[1] == 4)
+        {
+        	for(int i = 0; i < 4; i++)
+        	{
+        		str += (0xFF & array[i]) + " ";
+        	}
+        }
+        else
+        {
+	        for(int i = 0; i < array.length; i++)
+	        {
+	            str += (0xFF & array[i]) + " ";
+	        }
+        }
+        return str += "]";
+    }
 }
