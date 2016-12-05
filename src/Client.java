@@ -122,6 +122,7 @@ public class Client
 		// If default is selected
 		if(directory == 0)
 		{
+			System.out.println("directory = 0");
 			// Set the file path to where Client Directory is created
 			directoryPath = clientDir.getAbsolutePath().replace('\\',  '/');		
 			// If the directory doesn't already exist, create it
@@ -142,6 +143,20 @@ public class Client
 		{
 			// Prompt user to set directory path
 			directoryPath = JOptionPane.showInputDialog(null,"Specify file path:", "Directory", JOptionPane.QUESTION_MESSAGE);
+			clientDir = new File(directoryPath.replace('\\',  '/')/*, clientDir.getPath().replace('\\',  '/')*/);
+			// If the directory doesn't already exist, create it
+			if(!clientDir.exists())
+			{
+				try
+				{
+					//If the directory is successfully created
+					clientDir.mkdir();
+				}
+				catch(SecurityException se)
+				{
+					System.exit(1);
+				}
+			}
 		}
 		
 		// Print the chosen file path for the user to see
